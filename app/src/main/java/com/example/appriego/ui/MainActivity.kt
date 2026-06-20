@@ -39,12 +39,11 @@ class MainActivity : ComponentActivity() {
                             onVolverLogin = { pantalla = "login" }
                         )
                         "home" -> HomeScreen(
-                            onVincularClick = { pantalla = "bitacora" } // Modificado: Ahora te lleva a la Bitácora/Evaluación
+                            onVincularClick = { pantalla = "bluetooth" } // 🌟 CORREGIDO: Ahora sí te lleva a la pantalla de Bluetooth
                         )
                         "bitacora" -> BitacoraScreen(
-                            onVolverClick = { pantalla = "home" } // Regresa al Panel de Control principal (HomeScreen)
+                            onVolverClick = { pantalla = "home" }
                         )
-                        // NOTA: Si vas a usar Bluetooth más adelante, puedes mantener la ruta aquí:
                         "bluetooth" -> BluetoothMainScreen(
                             onDeviceConnected = { pantalla = "home" }
                         )
