@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.example.appriego.model.PlantaModelo
 
-class AppDatabase(context: Context) : SQLiteOpenHelper(context, "pachatech.db", null, 3) {
+class AppDatabase(context: Context) : SQLiteOpenHelper(context, "pachatech.db", null, 4) { // Subimos la versión a 4 para forzar actualización
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, apellidos TEXT, correo TEXT, contrasena TEXT)")
@@ -41,15 +41,17 @@ class AppDatabase(context: Context) : SQLiteOpenHelper(context, "pachatech.db", 
         return existe
     }
 
-    fun guardarHuerto(plantas: List<PlantaModelo>) {
+    fun guardarHuerto(lista: List<PlantaModelo>) {
         val db = this.writableDatabase
-        db.execSQL("DELETE FROM huerto")
-        plantas.forEach { planta ->
-            val valores = ContentValues().apply {
+
+        for (planta in lista) {
+            val values = ContentValues().apply {
+                // Dejamos que el ID se autoincremente solo en la tabla 'huerto'
                 put("nombre", planta.nombre)
                 put("nivelAgua", planta.nivelAgua)
             }
-            db.insert("huerto", null, valores)
+            // CORREGIDO: Ahora apunta correctamente a la tabla 'huerto'
+            db.insert("huerto", null, values)
         }
         db.close()
     }
