@@ -36,7 +36,7 @@ val CATALOGO_PLANTAS = listOf(
     TipoPlanta("Tomate (Mucha Agua)", 80),
     TipoPlanta("Lechuga (Agua Media)", 50),
     TipoPlanta("Espinaca (Agua Media)", 45),
-    TipoPlanta("Cactus / Suculenta", 15),
+    TipoPlanta("Cactus / (Poca Agua)", 15),
     TipoPlanta("Romero (Poca Agua)", 20)
 )
 
@@ -359,36 +359,65 @@ fun HomeScreen(onVincularClick: () -> Unit) {
                     Text("Selecciona una planta. Se ordenarán automáticamente por cercanía a la bomba física del centro.", fontSize = 13.sp, color = Color.Gray)
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // BUSCA ESTE BLOQUE EN TU DIÁLOGO DE PLANTAS Y REEMPLÁZALO:
                     CATALOGO_PLANTAS.forEach { tipo ->
                         TextButton(
                             onClick = {
                                 val nombreHuertoActivo = prefs.getString("nombreHuertoActual", "") ?: ""
                                 val listaModificada = huertoActual.toMutableList()
 
-                                // Modificamos la maceta que el usuario tocó
                                 listaModificada[macetaSeleccionadaIndice!!] = PlantaModelo(
                                     id = listaModificada[macetaSeleccionadaIndice!!].id,
                                     nombre = tipo.nombre,
                                     nivelAgua = tipo.nivelAguaIdeal
                                 )
 
-                                // Aplicamos el algoritmo inteligente para reubicar posiciones
                                 val listaOrdenada = organizarPlantasPorBomba(listaModificada)
 
-                                // Guardamos el nuevo orden sobreescribiendo el huerto actual en la DB
                                 if (nombreHuertoActivo.isNotEmpty()) {
                                     db.guardarHuertoCompleto(nombreHuertoActivo, listaOrdenada)
                                     huertoActual = db.obtenerMacetasPorHuerto(nombreHuertoActivo)
                                 }
 
                                 mostrarDialogoPlantas = false
-                                Toast.makeText(context, "¡Posiciones optimizadas en base a la bomba central!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "¡Posiciones optimizadas en base a la bomba!", Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(tipo.nombre, color = Color.DarkGray, fontWeight = FontWeight.Medium)
-                                Text("${tipo.nivelAguaIdeal}% H2O", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            // 🌟 AQUÍ ESTÁ EL CAMBIO CLAVE PARA LA LEGIBILIDAD DE TODO EL TEXTO:
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    // Nombre de la planta (Ej: Tomate) - Blanco en modo oscuro / Negro en claro
+                                    Text(
+                                        text = tipo.nombre,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    // Descripción del agua (Ej: Mucha agua) - Gris claro adaptable que resalta
+                                    Text(
+                                        text = when {
+                                            tipo.nivelAguaIdeal >= 75 -> "Mucha agua"
+                                            tipo.nivelAguaIdeal >= 50 -> "Agua moderada"
+                                            else -> "Poca agua"
+                                        },
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+
+                                // El porcentaje a la derecha (Ej: 80% H2O) en el color verde primario de tu tema
+                                Text(
+                                    text = "${tipo.nivelAguaIdeal}% H2O",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 16.sp
+                                )
                             }
                         }
                     }
