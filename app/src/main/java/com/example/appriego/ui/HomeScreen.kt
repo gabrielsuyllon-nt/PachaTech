@@ -36,7 +36,7 @@ val CATALOGO_PLANTAS = listOf(
     TipoPlanta("Tomate (Mucha Agua)", 80),
     TipoPlanta("Lechuga (Agua Media)", 50),
     TipoPlanta("Espinaca (Agua Media)", 45),
-    TipoPlanta("Cactus / (Poca Agua)", 15),
+    TipoPlanta("Cactus (Poca Agua)", 15),
     TipoPlanta("Romero (Poca Agua)", 20)
 )
 
