@@ -39,25 +39,14 @@ class MainActivity : ComponentActivity() {
                             onVolverLogin = { pantalla = "login" }
                         )
                         "home" -> HomeScreen(
-                            onVincularClick = { pantalla = "bluetooth" }
-                        )
-                        "bluetooth" -> BluetoothMainScreen(
-                            onDeviceConnected = {
-                                pantalla = if (db.tieneHuerto()) "dashboard" else "crear_huerto"
-                            }
-                        )
-                        "crear_huerto" -> CrearHuertoScreen(
-                            onGuardarClick = { listaPlantas ->
-                                db.guardarHuerto(listaPlantas) // Esto borra el viejo y guarda el nuevo automáticamente
-                                pantalla = "dashboard"
-                            }
-                        )
-                        "dashboard" -> DashboardScreen(
-                            onAbrirBitacora = { pantalla = "bitacora" },
-                            onEditarHuerto = { pantalla = "crear_huerto" } // AQUI CONECTAMOS EL BOTON
+                            onVincularClick = { pantalla = "bitacora" } // Modificado: Ahora te lleva a la Bitácora/Evaluación
                         )
                         "bitacora" -> BitacoraScreen(
-                            onVolverClick = { pantalla = "dashboard" }
+                            onVolverClick = { pantalla = "home" } // Regresa al Panel de Control principal (HomeScreen)
+                        )
+                        // NOTA: Si vas a usar Bluetooth más adelante, puedes mantener la ruta aquí:
+                        "bluetooth" -> BluetoothMainScreen(
+                            onDeviceConnected = { pantalla = "home" }
                         )
                     }
                 }

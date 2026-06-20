@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appriego.data.AppDatabase
-import com.example.appriego.R // IMPORTANTE: Asegúrate de que apunte al R de tu proyecto
+import com.example.appriego.R
 import kotlinx.coroutines.delay
 
 @Composable
@@ -49,21 +49,18 @@ fun LoginScreen(onLoginExitoso: () -> Unit, onNavegarRegistro: () -> Unit) {
         label = "EscalaTitulo"
     )
 
-    // El Box principal ahora apila la imagen, el degradado y el contenido encima
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // 1. LA IMAGEN DE FONDO (Con opacidad controlada)
         Image(
-            painter = painterResource(id = R.drawable.fondo_riego), // <--- AQUÍ VA TU IMAGEN
+            painter = painterResource(id = R.drawable.fondo_riego),
             contentDescription = "Fondo PachaTech",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop, // Hace que cubra toda la pantalla sin deformarse
-            alpha = 0.60f // <--- CONTROL DE OPACIDAD (0.0 invisible, 1.0 total). 0.25f es perfecto para que no estorbe
+            contentScale = ContentScale.Crop,
+            alpha = 0.60f
         )
 
-        // 2. EL DEGRADADO encima de la imagen (para fundir el color verde estético)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -77,7 +74,6 @@ fun LoginScreen(onLoginExitoso: () -> Unit, onNavegarRegistro: () -> Unit) {
                 )
         )
 
-        // 3. EL CONTENIDO DE LA INTERFAZ
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -135,22 +131,23 @@ fun LoginScreen(onLoginExitoso: () -> Unit, onNavegarRegistro: () -> Unit) {
                     Button(
                         onClick = {
                             val emailPattern = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$".toRegex()
+                            val correoLimpio = correo.trim()
 
-                            if (correo.isNotEmpty() && contrasena.isNotEmpty()) {
-                                if (correo.trim().matches(emailPattern)) {
-                                    val esValido = db.verificarLogin(correo.trim(), contrasena)
+                            if (correoLimpio.isNotEmpty() && contrasena.isNotEmpty()) {
+                                if (correoLimpio.matches(emailPattern)) {
+                                    val esValido = db.verificarLogin(correoLimpio, contrasena)
                                     if (esValido) {
                                         val prefs = context.getSharedPreferences("PachaTechPrefs", Context.MODE_PRIVATE)
 
-                                        // 1. OBTENEMOS EL NOMBRE DESDE LA BASE DE DATOS (O puedes simularlo leyendo el correo antes de modificar la DB)
-                                        // Para hacerlo directo, guardamos una cadena o hacemos una consulta rápida.
-                                        // Como tu db.verificarLogin devuelve Boolean, una forma limpia es guardar el correo o modificar el SP:
+                                        // 👑 CORRECCIÓN REAL: Buscamos tu verdadero nombre en la DB (Luis Fernando)
+                                        val nombreReal = db.obtenerNombreUsuario(correoLimpio)
+
                                         prefs.edit()
                                             .putBoolean("sesionActiva", true)
-                                            .putString("usuarioNombre", correo.split("@")[0].replaceFirstChar { it.uppercase() }) // Truco temporal: usa la primera parte del correo como nombre
+                                            .putString("usuarioNombre", nombreReal) // <-- Guardamos el nombre real de la base de datos
                                             .apply()
 
-                                        Toast.makeText(context, "¡Bienvenido a PachaTech!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "¡Bienvenido, $nombreReal!", Toast.LENGTH_SHORT).show()
                                         onLoginExitoso()
                                     } else {
                                         Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show()

@@ -1,5 +1,6 @@
 package com.example.appriego.ui
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +24,19 @@ import com.example.appriego.model.PlantaModelo
 fun BitacoraScreen(onVolverClick: () -> Unit) {
     val context = LocalContext.current
     val db = remember { AppDatabase(context) }
-    val plantasGuardadas = remember { db.obtenerHuerto() }
+
+    // 1. SOLUCIÓN: Recuperamos cuál es el huerto que está activo actualmente
+    val prefs = context.getSharedPreferences("PachaTechPrefs", Context.MODE_PRIVATE)
+    val nombreHuertoActivo = prefs.getString("nombreHuertoActual", "") ?: ""
+
+    // 2. SOLUCIÓN: Jalamos solo las plantas que pertenecen a ese huerto activo y filtramos las que no estén "Vacías"
+    val plantasGuardadas = remember(nombreHuertoActivo) {
+        if (nombreHuertoActivo.isNotEmpty()) {
+            db.obtenerMacetasPorHuerto(nombreHuertoActivo).filter { it.nombre != "Vacío" }
+        } else {
+            listOf()
+        }
+    }
 
     var plantaSeleccionada by remember { mutableStateOf<PlantaModelo?>(null) }
 
@@ -40,11 +53,22 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Evaluacion de Riego",
+            text = "Evaluación de Riego",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1B5E20)
         )
+
+        // Muestra una pequeña etiqueta con el huerto que se está evaluando
+        if (nombreHuertoActivo.isNotEmpty()) {
+            Text(
+                text = "Huerto actual: $nombreHuertoActivo",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -55,21 +79,44 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            plantasGuardadas.forEach { planta ->
-                val esSeleccionada = plantaSeleccionada?.id == planta.id
-                Button(
-                    onClick = { plantaSeleccionada = planta },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (esSeleccionada) Color(0xFF2E7D32) else Color.LightGray
-                    ),
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
-                ) {
-                    Text(planta.nombre, fontSize = 10.sp, color = if (esSeleccionada) Color.White else Color.Black)
+        if (plantasGuardadas.isEmpty()) {
+            // Si no hay plantas sembradas en este huerto
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay plantas sembradas en este huerto para evaluar.", fontSize = 12.sp, color = Color.Gray)
+            }
+        } else {
+            // Fila de botones para elegir planta
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                plantasGuardadas.forEach { planta ->
+                    val esSeleccionada = plantaSeleccionada?.id == planta.id
+                    Button(
+                        onClick = {
+                            plantaSeleccionada = planta
+                            // Limpiamos el diagnóstico anterior al cambiar de planta
+                            resultadoDiagnostico = ""
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (esSeleccionada) Color(0xFF2E7D32) else Color.LightGray
+                        ),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                    ) {
+                        // Cortamos el texto largo por si acaso para que quepa en el botón
+                        Text(
+                            text = planta.nombre.substringBefore(" ("),
+                            fontSize = 10.sp,
+                            color = if (esSeleccionada) Color.White else Color.Black
+                        )
+                    }
                 }
             }
         }
@@ -90,11 +137,11 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Ha notado algun crecimiento en los ultimos dias?", fontSize = 14.sp)
+                Text("¿Ha notado algún crecimiento en los últimos días?", fontSize = 14.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = crecimiento == "Si", onClick = { crecimiento = "Si" })
-                        Text("Si")
+                        Text("Sí")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = crecimiento == "No", onClick = { crecimiento = "No" })
@@ -104,11 +151,11 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Las hojas presentan manchas o color amarillento?", fontSize = 14.sp)
+                Text("¿Las hojas presentan manchas o color amarillento?", fontSize = 14.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = hojasAmarillas == "Si", onClick = { hojasAmarillas = "Si" })
-                        Text("Si")
+                        Text("Sí")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = hojasAmarillas == "No", onClick = { hojasAmarillas = "No" })
@@ -118,11 +165,11 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("La tierra se siente excesivamente seca al tacto?", fontSize = 14.sp)
+                Text("¿La tierra se siente excesivamente seca al tacto?", fontSize = 14.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = tierraSeca == "Si", onClick = { tierraSeca = "Si" })
-                        Text("Si")
+                        Text("Sí")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = tierraSeca == "No", onClick = { tierraSeca = "No" })
@@ -142,13 +189,13 @@ fun BitacoraScreen(onVolverClick: () -> Unit) {
                     Toast.makeText(context, "Responde todas las preguntas", Toast.LENGTH_SHORT).show()
                 } else {
                     resultadoDiagnostico = if (crecimiento == "Si" && hojasAmarillas == "No" && tierraSeca == "No") {
-                        "Analisis: El sistema de riego esta funcionando de manera optima para esta planta. Siga con la configuracion actual."
+                        "Análisis: El sistema de riego está funcionando de manera óptima para ${plantaSeleccionada?.nombre}. Siga con la configuración actual."
                     } else if (tierraSeca == "Si") {
-                        "Analisis: El suministro hídrico es insuficiente. Se recomienda incrementar el tiempo de apertura de la electrovalvula en el circuito fisico."
+                        "Análisis: El suministro hídrico es insuficiente para ${plantaSeleccionada?.nombre}. Se recomienda incrementar el tiempo de apertura de la electroválvula en el circuito físico."
                     } else if (hojasAmarillas == "Si") {
-                        "Analisis: Alerta de posible exceso de humedad o falta de nutrientes. Reduzca la frecuencia de riego en el controlador."
+                        "Análisis: Alerta de posible exceso de humedad en ${plantaSeleccionada?.nombre}. Reduzca la frecuencia de riego en el controlador."
                     } else {
-                        "Analisis: Datos registrados. Monitoree el comportamiento los proximos dos dias para evaluar la evolucion de la planta."
+                        "Análisis: Datos registrados para ${plantaSeleccionada?.nombre}. Monitoree el comportamiento los próximos dos días para evaluar la evolución."
                     }
                 }
             },
