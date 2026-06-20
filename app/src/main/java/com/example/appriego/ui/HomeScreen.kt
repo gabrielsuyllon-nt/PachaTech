@@ -1,4 +1,3 @@
-// ui/HomeScreen.kt
 package com.example.appriego.ui
 
 import androidx.compose.foundation.background
@@ -9,17 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
 fun HomeScreen(onVincularClick: () -> Unit) {
-    val context = LocalContext.current
-    val nombre = obtenerNombre(context) ?: "Agricultor"
+    val nombre = "Agricultor"
 
-    // Fondo blanco limpio, sin Scaffold
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -28,12 +24,11 @@ fun HomeScreen(onVincularClick: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Header
         Text(
             text = "PachaTech",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = GreenDark
+            color = Color(0xFF1B5E20)
         )
         Text(
             text = "Sistema Inteligente de Riego",
@@ -43,7 +38,6 @@ fun HomeScreen(onVincularClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Tarjeta bienvenida
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -52,13 +46,13 @@ fun HomeScreen(onVincularClick: () -> Unit) {
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "¡Hola, $nombre! 👋",
+                    text = "Hola, $nombre",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Para comenzar a monitorear tus plantas, primero debes sincronizar tu aplicación con el módulo físico de tu huerto.",
+                    text = "Para comenzar a monitorear tus plantas, primero debes sincronizar tu aplicacion con el modulo fisico de tu huerto.",
                     fontSize = 14.sp,
                     color = Color.Gray,
                     lineHeight = 20.sp
@@ -68,29 +62,27 @@ fun HomeScreen(onVincularClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Ilustración
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "📱", fontSize = 52.sp)
+            Text(text = "[ Movil ]", fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "⇄", fontSize = 28.sp, color = Color.LightGray)
+            Text(text = "<-->", fontSize = 24.sp, color = Color.Gray)
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "🪵", fontSize = 52.sp)
+            Text(text = "[ Huerto ]", fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Botón
         Button(
             onClick = onVincularClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(containerColor = GreenButton)
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
         ) {
             Text(
                 text = "Vincular Huerto",
