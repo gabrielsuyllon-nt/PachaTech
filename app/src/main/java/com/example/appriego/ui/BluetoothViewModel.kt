@@ -20,6 +20,15 @@ class BluetoothViewModel : ViewModel() {
 
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
 
+    private val _plantasDelHuertoActual = MutableStateFlow<List<String>>(
+        listOf("Tomate (Mucha Agua)", "Lechuga (Agua Media)", "Espinaca (Agua Media)") // Tus fijas por defecto
+    )
+    val plantasDelHuertoActual: StateFlow<List<String>> = _plantasDelHuertoActual.asStateFlow()
+
+    fun actualizarPlantasDelHuerto(nuevasPlantas: List<String>) {
+        _plantasDelHuertoActual.value = nuevasPlantas
+    }
+
     private val _devicesList = MutableStateFlow<List<BluetoothDeviceModel>>(emptyList())
     val devicesList: StateFlow<List<BluetoothDeviceModel>> = _devicesList.asStateFlow()
 
@@ -49,20 +58,15 @@ class BluetoothViewModel : ViewModel() {
         _devicesList.value = listaVinculados
     }
 
-    // 🌟 ESCANEO COMPLETO PARA LA FERIA: Jala vinculados e inyecta los disponibles en caliente
+    // ESCANEO COMPLETO PARA LA FERIA: Jala vinculados de forma real
     fun simularEscaneoReal() {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) return
 
-        // Cancelamos cualquier escaneo previo para no ralentizar
         if (bluetoothAdapter.isDiscovering) {
             bluetoothAdapter.cancelDiscovery()
         }
 
-        // Iniciamos el descubrimiento nativo (esto refresca la lista del sistema)
         bluetoothAdapter.startDiscovery()
-
-        // 🌟 BORRADO: Ya no forzamos la inyección de TV, Radio o Arduino_HC06_Bomba falsos.
-        // Simplemente llamamos a la función que lee lo que ya está guardado en el teléfono.
         cargarDispositivosVinculados()
     }
 
@@ -72,7 +76,6 @@ class BluetoothViewModel : ViewModel() {
             val remoteDevice = bluetoothAdapter.getRemoteDevice(deviceModel.address)
             remoteDevice.createBond()
 
-            // Simula el cambio inmediato a vinculado para la presentación fluida
             _devicesList.value = _devicesList.value.map {
                 if (it.address == deviceModel.address) it.copy(isPaired = true) else it
             }
@@ -92,7 +95,6 @@ class BluetoothViewModel : ViewModel() {
                 desconectarDispositivo()
             }
 
-            // En vez de borrarlo por completo, lo pasamos a la lista de "Disponibles" abajo
             _devicesList.value = _devicesList.value.map {
                 if (it.address == deviceModel.address) it.copy(isPaired = false, isConnected = false) else it
             }
@@ -133,6 +135,47 @@ class BluetoothViewModel : ViewModel() {
             _devicesList.value = _devicesList.value.map { it.copy(isConnected = false) }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    fun calcularHumedadNecesaria(plantasSeleccionadas: List<String>): Int {
+        if (plantasSeleccionadas.isEmpty()) return 0
+
+        val requerimientos = mapOf(
+            "Tomate (Mucha Agua)" to 80,
+            "Lechuga (Agua Media)" to 50,
+            "Espinaca (Agua Media)" to 45,
+            "Cactus (Poca Agua)" to 15,
+            "Romero (Poca Agua)" to 20
+        )
+
+        var sumaHumedades = 0
+        var plantasValidas = 0
+
+        for (planta in plantasSeleccionadas) {
+            requerimientos[planta]?.let { humedad ->
+                sumaHumedades += humedad
+                plantasValidas++
+            }
+        }
+
+        return if (plantasValidas > 0) sumaHumedades / plantasValidas else 50
+    }
+
+    // 🌟 NUEVA FUNCIÓN AGREGADA: Transmite el número por el canal Bluetooth real
+    // Se llama 'enviarUmbralArduinio' con la 'i' para que encaje directo con tu UI
+    fun enviarUmbralArduinio(porcentaje: Int) {
+        if (bluetoothSocket == null || !bluetoothSocket!!.isConnected) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val outputStream = bluetoothSocket!!.outputStream
+                val trama = "$porcentaje\n" // Añade el salto de línea obligatorio para el Arduino
+                outputStream.write(trama.toByteArray())
+                outputStream.flush()
+                println("LOG_FERIA: Umbral unificado transmitido -> $trama")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

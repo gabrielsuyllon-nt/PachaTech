@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.model.PlantaModelo
 
@@ -44,7 +45,8 @@ val CATALOGO_PLANTAS = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onVincularClick: () -> Unit) {
+fun HomeScreen(bluetoothViewModel: BluetoothViewModel = viewModel(),
+               onVincularClick: () -> Unit) {
     val context = LocalContext.current
     val db = remember { AppDatabase(context) }
 
@@ -166,7 +168,23 @@ fun HomeScreen(onVincularClick: () -> Unit) {
 
             // 🌟 CORRECCIÓN EXCELENTE: El botón ahora vive aquí abajo, dentro de la columna segura
             Button(
-                onClick = { onVincularClick() },
+                onClick = {
+                    // 1. Extraemos solo los nombres de las plantas sembradas (ignorando las que están "Vacío")
+                    val plantasNombres = huertoActual
+                        .map { it.nombre }
+                        .filter { it != "Vacío" }
+
+                    // 2. Si hay plantas, se las inyectamos al ViewModel para que las recuerde
+                    if (plantasNombres.isNotEmpty()) {
+                        bluetoothViewModel.actualizarPlantasDelHuerto(plantasNombres)
+                    } else {
+                        // Si el huerto está vacío, le mandamos una lista vacía para que use el respaldo de la feria
+                        bluetoothViewModel.actualizarPlantasDelHuerto(emptyList())
+                    }
+
+                    // 3. Abrimos el panel flotante de Bluetooth
+                    onVincularClick()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

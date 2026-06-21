@@ -44,9 +44,12 @@ fun BluetoothMainScreen(
     val devices by viewModel.devicesList.collectAsState()
     val connectedDevice by viewModel.connectedDevice.collectAsState()
 
+    // 🌟 RE REAL: Escucha en vivo las plantas que el ViewModel tiene guardadas en memoria
+    val plantasDelHuerto by viewModel.plantasDelHuertoActual.collectAsState()
+
     var buscandoDispositivos by remember { mutableStateOf(false) }
 
-    // 🌟 1. EL LANZADOR AUTOMÁTICO DE PERMISOS
+    // 1. EL LANZADOR AUTOMÁTICO DE PERMISOS
     val launcherPermisos = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permisos ->
@@ -59,7 +62,7 @@ fun BluetoothMainScreen(
         }
     }
 
-    // 🌟 2. COMPROBACIÓN AL ENTRAR A LA PANTALLA
+    // 2. COMPROBACIÓN AL ENTRAR A LA PANTALLA
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val tieneConnect = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
@@ -169,126 +172,218 @@ fun BluetoothMainScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            if (devices.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No se encontraron dispositivos.\nPresiona 'Buscar / Actualizar Lista'.",
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(devices) { device ->
-                        val esElConectado = connectedDevice?.address == device.address
+            // Contenedor que empuja la planificación hacia abajo
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                if (devices.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No se encontraron dispositivos.\nPresiona 'Buscar / Actualizar Lista'.",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(devices) { device ->
+                            val esElConectado = connectedDevice?.address == device.address
 
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = if (esElConectado) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2E7D32)) else null,
-                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                border = if (esElConectado) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2E7D32)) else null,
+                                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
                                     Row(
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Surface(
+                                                modifier = Modifier.size(42.dp),
+                                                shape = CircleShape,
+                                                color = if (esElConectado) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.primaryContainer
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Bluetooth,
+                                                    contentDescription = null,
+                                                    tint = if (esElConectado) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(10.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                                                Text(
+                                                    text = device.name ?: "Dispositivo Guardado",
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 16.sp,
+                                                    color = Color.Black,
+                                                    maxLines = 1
+                                                )
+                                                Text(
+                                                    text = "Dirección MAC: ${device.address}",
+                                                    fontSize = 13.sp,
+                                                    color = Color.DarkGray
+                                                )
+                                            }
+                                        }
+                                        if (esElConectado) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF2E7D32),
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Listo", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Surface(
-                                            modifier = Modifier.size(42.dp),
-                                            shape = CircleShape,
-                                            color = if (esElConectado) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.primaryContainer
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Bluetooth,
-                                                contentDescription = null,
-                                                tint = if (esElConectado) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(10.dp)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Column(modifier = Modifier.weight(1f, fill = false)) {
-                                            Text(
-                                                text = device.name ?: "Dispositivo Guardado",
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 16.sp,
-                                                color = Color.Black,
-                                                maxLines = 1
-                                            )
-                                            Text(
-                                                text = "Dirección MAC: ${device.address}",
-                                                fontSize = 13.sp,
-                                                color = Color.DarkGray
-                                            )
-                                        }
-                                    }
-                                    if (esElConectado) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                tint = Color(0xFF2E7D32),
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Listo", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                        }
-                                    }
-                                }
+                                        if (device.isPaired) {
+                                            TextButton(
+                                                onClick = { viewModel.desvincularDispositivoReal(device) },
+                                                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
+                                            ) {
+                                                Text("Desvincular", fontWeight = FontWeight.Bold)
+                                            }
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // 🌟 LOS BOTONES DE DEJARON INTACTOS Y CON EL ANCHO CONTROLADO (FIX)
-                                    if (device.isPaired) {
-                                        TextButton(
-                                            onClick = { viewModel.desvincularDispositivoReal(device) },
-                                            colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
-                                        ) {
-                                            Text("Desvincular", fontWeight = FontWeight.Bold)
-                                        }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Button(
-                                            onClick = { viewModel.conectarDispositivo(device) },
-                                            enabled = !esElConectado,
-                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ) {
-                                            Text(if (esElConectado) "Conectado" else "Conectar")
-                                        }
-                                    } else {
-                                        Button(
-                                            onClick = {
-                                                Toast.makeText(context, "Emparejando con ${device.name}...", Toast.LENGTH_SHORT).show()
-                                                viewModel.vincularDispositivoReal(device)
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                                        ) {
-                                            Text("Vincular", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            Button(
+                                                onClick = { viewModel.conectarDispositivo(device) },
+                                                enabled = !esElConectado,
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text(if (esElConectado) "Conectado" else "Conectar")
+                                            }
+                                        } else {
+                                            Button(
+                                                onClick = {
+                                                    Toast.makeText(context, "Emparejando con ${device.name}...", Toast.LENGTH_SHORT).show()
+                                                    viewModel.vincularDispositivoReal(device)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                            ) {
+                                                Text("Vincular", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 🌟 PANEL DE PLANIFICACIÓN AUTOMÁTICO (Recuerda los datos del huerto actual)
+            // =========================================================================
+            Spacer(modifier = Modifier.height(16.dp))
+
+            var humedadCalculada by remember { mutableStateOf<Int?>(null) }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Planificación del Huerto Actual",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF2E7D32)
+                    )
+                    Text(
+                        text = "Plantas en la caja: ${plantasDelHuerto.joinToString(", ")}",
+                        fontSize = 13.sp,
+                        color = Color.DarkGray,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                humedadCalculada = viewModel.calcularHumedadNecesaria(plantasDelHuerto)
+                                Toast.makeText(context, "Humedad ideal calculada: $humedadCalculada%", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f).height(48.dp)
+                        ) {
+                            Text("Calcular Humedad", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .background(Color.White, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (humedadCalculada != null) "$humedadCalculada%" else "--",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 14.sp,
+                                color = Color.Black
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            if (connectedDevice == null) {
+                                Toast.makeText(context, "Aún no hay ningún dispositivo conectado", Toast.LENGTH_LONG).show()
+                            } else if (humedadCalculada == null) {
+                                Toast.makeText(context, "Primero debes presionar 'Calcular Humedad'", Toast.LENGTH_SHORT).show()
+                            } else {
+                                humedadCalculada?.let { porcentaje ->
+                                    viewModel.enviarUmbralArduinio(porcentaje)
+                                    Toast.makeText(context, "¡$porcentaje% enviado a la bomba física!", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        enabled = true,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Enviar la Info. por Bluetooth", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
             }
