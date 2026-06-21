@@ -1,6 +1,7 @@
 package com.example.appriego.ui
 
 import android.content.Context
+import androidx.compose.ui.res.painterResource
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,8 +46,12 @@ val CATALOGO_PLANTAS = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(bluetoothViewModel: BluetoothViewModel = viewModel(),
-               onVincularClick: () -> Unit) {
+fun HomeScreen(
+    bluetoothViewModel: BluetoothViewModel = viewModel(),
+    onVincularClick: () -> Unit,
+    onLogout: () -> Unit,
+    onAddAccount: () -> Unit
+) {
     val context = LocalContext.current
     val db = remember { AppDatabase(context) }
 
@@ -95,6 +100,7 @@ fun HomeScreen(bluetoothViewModel: BluetoothViewModel = viewModel(),
                 .padding(24.dp)
         ) {
 
+            // --- ENCABEZADO DE BIENVENIDA ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -104,10 +110,48 @@ fun HomeScreen(bluetoothViewModel: BluetoothViewModel = viewModel(),
                     Text("Bienvenido,", fontSize = 16.sp, color = Color.Gray)
                     Text(nombreUsuario.value, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                 }
-                Surface(modifier = Modifier.size(50.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                    Icon(Icons.Default.Eco, contentDescription = null, modifier = Modifier.padding(12.dp), tint = MaterialTheme.colorScheme.primary)
+
+                // Variable para controlar si el menú está abierto o cerrado
+                var menuExpandido by remember { mutableStateOf(false) }
+
+                Box {
+                    Surface(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clickable { menuExpandido = true },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.example.appriego.R.drawable.ic_user),
+                            contentDescription = "Opciones de usuario",
+                            modifier = Modifier.padding(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // El menú flotante que aparecerá colgado del botón
+                    DropdownMenu(
+                        expanded = menuExpandido,
+                        onDismissRequest = { menuExpandido = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Añadir otra cuenta") },
+                            onClick = {
+                                menuExpandido = false
+                                onAddAccount()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Cerrar sesión") },
+                            onClick = {
+                                menuExpandido = false
+                                onLogout()
+                            }
+                        )
+                    }
                 }
-            }
+            } // 👈 Asegúrate de que esta llave cierre el Row correctamente
 
             Spacer(modifier = Modifier.height(32.dp))
 

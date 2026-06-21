@@ -39,7 +39,16 @@ class MainActivity : ComponentActivity() {
                             onVolverLogin = { pantalla = "login" }
                         )
                         "home" -> HomeScreen(
-                            onVincularClick = { pantalla = "bluetooth" } // 🌟 CORREGIDO: Ahora sí te lleva a la pantalla de Bluetooth
+                            onVincularClick = { pantalla = "bluetooth" },
+                            onLogout = {
+                                val prefs = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE)
+                                prefs.edit().putBoolean("sesionActiva", false).apply()
+
+                                pantalla = "login"
+                            },
+                            onAddAccount = {
+                                pantalla = "login"
+                            }
                         )
                         "bitacora" -> BitacoraScreen(
                             onVolverClick = { pantalla = "home" }
