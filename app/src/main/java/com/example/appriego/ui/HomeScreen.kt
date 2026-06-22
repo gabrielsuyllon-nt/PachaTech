@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// import androidx.lifecycle.viewmodel.compose.viewModel  <-- Comentado temporalmente
+import androidx.lifecycle.viewmodel.compose.viewModel // <-- LIBRERÍA RESTAURADA
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.model.PlantaModelo
 
@@ -46,7 +46,7 @@ val CATALOGO_PLANTAS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    // bluetoothViewModel: BluetoothViewModel = viewModel(), <-- AQUÍ ESTABA EL ERROR DEL EMULADOR
+    bluetoothViewModel: BluetoothViewModel = viewModel(), // <-- VIEWMODEL RESTAURADO Y ACTIVO
     onVincularClick: () -> Unit,
     onBitacoraClick: () -> Unit,
     onLogout: () -> Unit,
@@ -110,7 +110,6 @@ fun HomeScreen(
                     Text(nombreUsuario.value, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                 }
 
-                // Variable para controlar si el menú está abierto o cerrado
                 var menuExpandido by remember { mutableStateOf(false) }
 
                 Box {
@@ -129,7 +128,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // El menú flotante que aparecerá colgado del botón
                     DropdownMenu(
                         expanded = menuExpandido,
                         onDismissRequest = { menuExpandido = false }
@@ -226,14 +224,13 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = {
-                    /* --- DESACTIVADO TEMPORALMENTE PARA EL EMULADOR ---
+                    // --- LÓGICA DE BLUETOOTH REACTIVADA ---
                     val plantasNombres = huertoActual.map { it.nombre }.filter { it != "Vacío" }
                     if (plantasNombres.isNotEmpty()) {
                         bluetoothViewModel.actualizarPlantasDelHuerto(plantasNombres)
                     } else {
                         bluetoothViewModel.actualizarPlantasDelHuerto(emptyList())
                     }
-                    */
 
                     onVincularClick()
                 },

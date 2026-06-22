@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.ui.theme.AppRiegoTheme
+import com.example.appriego.ui.HistorialScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,7 +18,10 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE)
         val sesionActiva = prefs.getBoolean("sesionActiva", false)
-        val pantallaInicial = if (sesionActiva) "home" else "login"
+
+        // --- CAMBIO CLAVE PARA HARDWARE ---
+        // Si hay sesión activa, primero debe conectarse a la placa, luego ir al Home.
+        val pantallaInicial = if (sesionActiva) "bluetooth" else "login"
 
         setContent {
             AppRiegoTheme {
@@ -31,7 +35,8 @@ class MainActivity : ComponentActivity() {
 
                     when (pantalla) {
                         "login" -> LoginScreen(
-                            onLoginExitoso = { pantalla = "home" },
+                            // Al loguearse con éxito, lo mandamos a conectar el módulo
+                            onLoginExitoso = { pantalla = "bluetooth" },
                             onNavegarRegistro = { pantalla = "registro" }
                         )
                         "registro" -> RegistroScreen(
@@ -42,9 +47,8 @@ class MainActivity : ComponentActivity() {
                             onVincularClick = { pantalla = "bluetooth" },
                             onBitacoraClick = { pantalla = "bitacora" },
                             onLogout = {
-                                val prefs = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE)
-                                prefs.edit().putBoolean("sesionActiva", false).apply()
-
+                                val editor = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE).edit()
+                                editor.putBoolean("sesionActiva", false).apply()
                                 pantalla = "login"
                             },
                             onAddAccount = {
@@ -52,9 +56,14 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         "bitacora" -> BitacoraScreen(
-                            onVolverClick = { pantalla = "home" }
+                            onVolverClick = { pantalla = "home" },
+                            onVerHistorialClick = { pantalla = "historial" }
+                        )
+                        "historial" -> HistorialScreen(
+                            onVolverClick = { pantalla = "bitacora" }
                         )
                         "bluetooth" -> BluetoothMainScreen(
+                            // Una vez emparejado y conectado, recién entramos al dashboard principal
                             onDeviceConnected = { pantalla = "home" }
                         )
                     }
