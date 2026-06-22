@@ -3,15 +3,17 @@ package com.example.appriego.ui
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -19,213 +21,365 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.model.PlantaModelo
+import androidx.compose.material.icons.filled.List
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BitacoraScreen(onVolverClick: () -> Unit) {
     val context = LocalContext.current
     val db = remember { AppDatabase(context) }
 
-    // 1. SOLUCIÓN: Recuperamos cuál es el huerto que está activo actualmente
     val prefs = context.getSharedPreferences("PachaTechPrefs", Context.MODE_PRIVATE)
-    val nombreHuertoActivo = prefs.getString("nombreHuertoActual", "") ?: ""
-
-    // 2. SOLUCIÓN: Jalamos solo las plantas que pertenecen a ese huerto activo y filtramos las que no estén "Vacías"
-    val plantasGuardadas = remember(nombreHuertoActivo) {
-        if (nombreHuertoActivo.isNotEmpty()) {
-            db.obtenerMacetasPorHuerto(nombreHuertoActivo).filter { it.nombre != "Vacío" }
-        } else {
-            listOf()
-        }
+    val nombreGuardado = prefs.getString("nombreHuertoActual", "") ?: ""
+    val plantasGuardadas = remember {
+        if (nombreGuardado.isNotEmpty()) db.obtenerMacetasPorHuerto(nombreGuardado).filter { it.nombre != "Vacío" }
+        else listOf()
     }
 
     var plantaSeleccionada by remember { mutableStateOf<PlantaModelo?>(null) }
 
-    var crecimiento by remember { mutableStateOf("") }
-    var hojasAmarillas by remember { mutableStateOf("") }
-    var tierraSeca by remember { mutableStateOf("") }
+    var q1Crecimiento by remember { mutableStateOf("") }
+    var q2Marchitamiento by remember { mutableStateOf("") }
+    var q3Color by remember { mutableStateOf("") }
+    var q4Tacto by remember { mutableStateOf("") }
+    var q5Costra by remember { mutableStateOf("") }
+    var q6Moho by remember { mutableStateOf("") }
+
     var resultadoDiagnostico by remember { mutableStateOf("") }
+    var mostrarHistorial by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Evaluación de Riego",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE8F5E9),
+                            Color(0xFFFFFFFF)
+                        )
+                    )
+                )
         )
 
-        // Muestra una pequeña etiqueta con el huerto que se está evaluando
-        if (nombreHuertoActivo.isNotEmpty()) {
-            Text(
-                text = "Huerto actual: $nombreHuertoActivo",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "1. Selecciona la planta a evaluar:",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (plantasGuardadas.isEmpty()) {
-            // Si no hay plantas sembradas en este huerto
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay plantas sembradas en este huerto para evaluar.", fontSize = 12.sp, color = Color.Gray)
-            }
-        } else {
-            // Fila de botones para elegir planta
+            // --- CABECERA ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                plantasGuardadas.forEach { planta ->
-                    val esSeleccionada = plantaSeleccionada?.id == planta.id
-                    Button(
-                        onClick = {
-                            plantaSeleccionada = planta
-                            // Limpiamos el diagnóstico anterior al cambiar de planta
-                            resultadoDiagnostico = ""
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (esSeleccionada) Color(0xFF2E7D32) else Color.LightGray
-                        ),
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
-                    ) {
-                        // Cortamos el texto largo por si acaso para que quepa en el botón
-                        Text(
-                            text = planta.nombre.substringBefore(" ("),
-                            fontSize = 10.sp,
-                            color = if (esSeleccionada) Color.White else Color.Black
-                        )
+                Column {
+                    Text(
+                        text = "Evaluación de Riego",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Huerto actual: $nombreGuardado",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                IconButton(
+                    onClick = { mostrarHistorial = true },
+                    modifier = Modifier.background(Color(0xFFE8F5E9), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.List,
+                        contentDescription = "Historial",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Llamada al Dashboard
+            if (mostrarHistorial) {
+                DashboardHistorialSemanal(onDismiss = { mostrarHistorial = false })
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // --- SECCIÓN 1: SELECCIÓN DE PLANTA ---
+            Text(
+                text = "1. Selecciona la planta a evaluar:",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (plantasGuardadas.isEmpty()) {
+                Text("No hay plantas registradas en este huerto.", color = Color.Gray, fontSize = 14.sp)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    plantasGuardadas.forEachIndexed { index, planta ->
+                        val esSeleccionada = plantaSeleccionada?.id == planta.id
+                        Button(
+                            onClick = { plantaSeleccionada = planta },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (esSeleccionada) MaterialTheme.colorScheme.primary else Color(0xFFF5F5F5)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(40.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = "${index + 1}. ${planta.nombre.split(" ").first()}",
+                                fontSize = 12.sp,
+                                color = if (esSeleccionada) Color.White else Color.DarkGray,
+                                fontWeight = if (esSeleccionada) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "2. Cuestionario de Estado:",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+            // --- SECCIÓN 2: CUESTIONARIO ---
+            Text(
+                text = "2. Cuestionario de Estado:",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("¿Ha notado algún crecimiento en los últimos días?", fontSize = 14.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = crecimiento == "Si", onClick = { crecimiento = "Si" })
-                        Text("Sí")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = crecimiento == "No", onClick = { crecimiento = "No" })
-                        Text("No")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("¿Las hojas presentan manchas o color amarillento?", fontSize = 14.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = hojasAmarillas == "Si", onClick = { hojasAmarillas = "Si" })
-                        Text("Sí")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = hojasAmarillas == "No", onClick = { hojasAmarillas = "No" })
-                        Text("No")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("¿La tierra se siente excesivamente seca al tacto?", fontSize = 14.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = tierraSeca == "Si", onClick = { tierraSeca = "Si" })
-                        Text("Sí")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = tierraSeca == "No", onClick = { tierraSeca = "No" })
-                        Text("No")
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                if (plantaSeleccionada == null) {
-                    Toast.makeText(context, "Selecciona una planta primero", Toast.LENGTH_SHORT).show()
-                } else if (crecimiento.isEmpty() || hojasAmarillas.isEmpty() || tierraSeca.isEmpty()) {
-                    Toast.makeText(context, "Responde todas las preguntas", Toast.LENGTH_SHORT).show()
-                } else {
-                    resultadoDiagnostico = if (crecimiento == "Si" && hojasAmarillas == "No" && tierraSeca == "No") {
-                        "Análisis: El sistema de riego está funcionando de manera óptima para ${plantaSeleccionada?.nombre}. Siga con la configuración actual."
-                    } else if (tierraSeca == "Si") {
-                        "Análisis: El suministro hídrico es insuficiente para ${plantaSeleccionada?.nombre}. Se recomienda incrementar el tiempo de apertura de la electroválvula en el circuito físico."
-                    } else if (hojasAmarillas == "Si") {
-                        "Análisis: Alerta de posible exceso de humedad en ${plantaSeleccionada?.nombre}. Reduzca la frecuencia de riego en el controlador."
-                    } else {
-                        "Análisis: Datos registrados para ${plantaSeleccionada?.nombre}. Monitoree el comportamiento los próximos dos días para evaluar la evolución."
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20))
-        ) {
-            Text("Procesar y Analizar Datos")
-        }
-
-        if (resultadoDiagnostico.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-                shape = RoundedCornerShape(8.dp)
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+
+                    Text("¿Se evidencia la aparición de hojas nuevas o alargamiento del tallo?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q1Crecimiento == "Sí",
+                            onClick = { q1Crecimiento = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q1Crecimiento == "No",
+                            onClick = { q1Crecimiento = "No" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("¿Observa pérdida de firmeza o marchitamiento durante el día?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q2Marchitamiento == "Sí",
+                            onClick = { q2Marchitamiento = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q2Marchitamiento == "No",
+                            onClick = { q2Marchitamiento = "No" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("¿Las hojas presentan un color amarillento inusual o bordes secos?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q3Color == "Sí",
+                            onClick = { q3Color = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q3Color == "No",
+                            onClick = { q3Color = "No" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Divider(color = Color(0xFFF5F5F5), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Al tacto (2 cm), ¿la tierra se siente anormalmente seca o empapada?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q4Tacto == "Sí",
+                            onClick = { q4Tacto = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q4Tacto == "No (Normal)",
+                            onClick = { q4Tacto = "No (Normal)" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No (Normal)", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("¿La superficie de la tierra presenta una costra dura o grietas?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q5Costra == "Sí",
+                            onClick = { q5Costra = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q5Costra == "No",
+                            onClick = { q5Costra = "No" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("¿Observa coloración verdosa (algas) o moho en la tierra?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = q6Moho == "Sí",
+                            onClick = { q6Moho = "Sí" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sí", fontSize = 14.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(24.dp))
+                        RadioButton(
+                            selected = q6Moho == "No",
+                            onClick = { q6Moho = "No" },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("No", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- SECCIÓN 3: RESULTADOS Y BOTÓN ---
+            Button(
+                onClick = {
+                    if (plantaSeleccionada == null) {
+                        Toast.makeText(context, "Selecciona una planta primero", Toast.LENGTH_SHORT).show()
+                    } else if (q1Crecimiento.isEmpty() || q2Marchitamiento.isEmpty() || q3Color.isEmpty() || q4Tacto.isEmpty() || q5Costra.isEmpty() || q6Moho.isEmpty()) {
+                        Toast.makeText(context, "Responde todas las preguntas para el diagnóstico", Toast.LENGTH_SHORT).show()
+                    } else {
+
+                        val plantaSana = q1Crecimiento == "Sí" && q2Marchitamiento == "No" && q3Color == "No"
+                        val sueloOk = q4Tacto == "No (Normal)" && q5Costra == "No" && q6Moho == "No"
+
+                        resultadoDiagnostico = when {
+                            plantaSana && sueloOk ->
+                                "SISTEMA EFICIENTE:\nLa telemetría coincide con el desarrollo vigoroso. El algoritmo de riego automático opera con parámetros óptimos."
+
+                            plantaSana && q5Costra == "Sí" ->
+                                "ACCIÓN PREVENTIVA (Aireación):\nLa planta y el riego están bien, pero la tierra empieza a compactarse. Remueva ligeramente la superficie para prevenir futuros problemas de infiltración."
+
+                            plantaSana && q6Moho == "Sí" ->
+                                "ACCIÓN PREVENTIVA (Drenaje):\nLa planta se desarrolla bien, pero hay indicios de moho. Verifique que los agujeros de la maceta no estén tapados para evitar acumulación futura."
+
+                            q2Marchitamiento == "Sí" && (q5Costra == "Sí" || q4Tacto == "Sí") ->
+                                "ALERTA CRÍTICA DE SUELO:\nLa planta presenta marchitamiento porque la costra o sequedad extrema impide que el riego automático llegue a las raíces. ¡Remueva la tierra de inmediato!"
+
+                            (q3Color == "Sí" || q2Marchitamiento == "Sí") && q6Moho == "Sí" ->
+                                "MEJORA DE VENTILACIÓN (Exceso retenido):\nLa planta presenta síntomas de asfixia (clorosis/moho). El sustrato no está logrando evaporar el agua del riego automático. Reubique la maceta temporalmente a una zona con mayor luz solar y corriente de aire."
+
+                            q1Crecimiento == "No" && q3Color == "Sí" && sueloOk ->
+                                "ALERTA DE NUTRIENTES:\nEl suministro de agua y la tierra son correctos, pero la planta no crece y pierde color. Se requiere aplicar ABONO ORGÁNICO."
+
+                            else ->
+                                "DIAGNÓSTICO PREVENTIVO:\nEl sistema detecta anomalías leves. Se recomienda limpieza de hojas y verificar la ubicación de la planta respecto a la luz solar."
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Procesar y Analizar Datos", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+
+            if (resultadoDiagnostico.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                val colorFondo = when {
+                    resultadoDiagnostico.contains("SISTEMA EFICIENTE") -> Color(0xFFE8F5E9)
+                    resultadoDiagnostico.contains("ACCIÓN PREVENTIVA") -> Color(0xFFFFF3E0)
+                    resultadoDiagnostico.contains("PREVENTIVO") -> Color(0xFFF5F5F5)
+                    else -> Color(0xFFFFEBEE)
+                }
+
+                val colorTexto = when {
+                    resultadoDiagnostico.contains("SISTEMA EFICIENTE") -> Color(0xFF1B5E20)
+                    resultadoDiagnostico.contains("ACCIÓN PREVENTIVA") -> Color(0xFFE65100)
+                    resultadoDiagnostico.contains("PREVENTIVO") -> Color(0xFF424242)
+                    else -> Color(0xFFC62828)
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = colorFondo),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Text(
+                        text = resultadoDiagnostico,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorTexto,
+                        modifier = Modifier.padding(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            TextButton(onClick = onVolverClick) {
                 Text(
-                    text = resultadoDiagnostico,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF1B5E20),
-                    modifier = Modifier.padding(16.dp)
+                    text = "Volver al Menú Principal",
+                    color = Color.Gray,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        TextButton(onClick = onVolverClick) {
-            Text("Volver al Panel de Control", color = Color.Gray)
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

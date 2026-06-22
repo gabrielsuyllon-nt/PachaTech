@@ -44,12 +44,12 @@ fun BluetoothMainScreen(
     val devices by viewModel.devicesList.collectAsState()
     val connectedDevice by viewModel.connectedDevice.collectAsState()
 
-    // 🌟 RE REAL: Escucha en vivo las plantas que el ViewModel tiene guardadas en memoria
+
     val plantasDelHuerto by viewModel.plantasDelHuertoActual.collectAsState()
 
     var buscandoDispositivos by remember { mutableStateOf(false) }
 
-    // 1. EL LANZADOR AUTOMÁTICO DE PERMISOS
+
     val launcherPermisos = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permisos ->
@@ -62,7 +62,7 @@ fun BluetoothMainScreen(
         }
     }
 
-    // 2. COMPROBACIÓN AL ENTRAR A LA PANTALLA
+
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val tieneConnect = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
@@ -92,7 +92,7 @@ fun BluetoothMainScreen(
                 .statusBarsPadding()
                 .padding(24.dp)
         ) {
-            // CABECERA
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -119,7 +119,7 @@ fun BluetoothMainScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // BOTÓN DE ACTUALIZACIÓN / REFRESCO REAL
+
             Button(
                 onClick = {
                     val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
@@ -172,7 +172,7 @@ fun BluetoothMainScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Contenedor que empuja la planificación hacia abajo
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -302,9 +302,7 @@ fun BluetoothMainScreen(
                 }
             }
 
-            // =========================================================================
-            // 🌟 PANEL DE PLANIFICACIÓN AUTOMÁTICO (Recuerda los datos del huerto actual)
-            // =========================================================================
+
             Spacer(modifier = Modifier.height(16.dp))
 
             var humedadCalculada by remember { mutableStateOf<Int?>(null) }

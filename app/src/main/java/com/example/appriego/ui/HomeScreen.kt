@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -30,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+// import androidx.lifecycle.viewmodel.compose.viewModel  <-- Comentado temporalmente
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.model.PlantaModelo
 
@@ -47,8 +46,9 @@ val CATALOGO_PLANTAS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    bluetoothViewModel: BluetoothViewModel = viewModel(),
+    // bluetoothViewModel: BluetoothViewModel = viewModel(), <-- AQUÍ ESTABA EL ERROR DEL EMULADOR
     onVincularClick: () -> Unit,
+    onBitacoraClick: () -> Unit,
     onLogout: () -> Unit,
     onAddAccount: () -> Unit
 ) {
@@ -100,7 +100,6 @@ fun HomeScreen(
                 .padding(24.dp)
         ) {
 
-            // --- ENCABEZADO DE BIENVENIDA ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -151,7 +150,7 @@ fun HomeScreen(
                         )
                     }
                 }
-            } // 👈 Asegúrate de que esta llave cierre el Row correctamente
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -198,7 +197,7 @@ fun HomeScreen(
                         MacetitaCard(
                             planta = planta,
                             indice = indice,
-                            totalMacetas = huertoActual.size, // 🌟 Pasamos el tamaño dinámico real
+                            totalMacetas = huertoActual.size,
                             onClick = {
                                 macetaSeleccionadaIndice = indice
                                 mostrarDialogoPlantas = true
@@ -209,24 +208,33 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onBitacoraClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32))
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.List, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Abrir Bitacora del Huerto", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
 
-            // 🌟 CORRECCIÓN EXCELENTE: El botón ahora vive aquí abajo, dentro de la columna segura
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = {
-                    // 1. Extraemos solo los nombres de las plantas sembradas (ignorando las que están "Vacío")
-                    val plantasNombres = huertoActual
-                        .map { it.nombre }
-                        .filter { it != "Vacío" }
-
-                    // 2. Si hay plantas, se las inyectamos al ViewModel para que las recuerde
+                    /* --- DESACTIVADO TEMPORALMENTE PARA EL EMULADOR ---
+                    val plantasNombres = huertoActual.map { it.nombre }.filter { it != "Vacío" }
                     if (plantasNombres.isNotEmpty()) {
                         bluetoothViewModel.actualizarPlantasDelHuerto(plantasNombres)
                     } else {
-                        // Si el huerto está vacío, le mandamos una lista vacía para que use el respaldo de la feria
                         bluetoothViewModel.actualizarPlantasDelHuerto(emptyList())
                     }
+                    */
 
-                    // 3. Abrimos el panel flotante de Bluetooth
                     onVincularClick()
                 },
                 modifier = Modifier
@@ -430,7 +438,7 @@ fun HomeScreen(
                     CATALOGO_PLANTAS.forEach { tipo ->
                         TextButton(
                             onClick = {
-                                val nombreHuertoActivo = prefs.getString("nombreHuertoActual", "") ?: ""
+                                val nombreHuertoActivoLocal = prefs.getString("nombreHuertoActual", "") ?: ""
                                 val listaModificada = huertoActual.toMutableList()
 
                                 listaModificada[macetaSeleccionadaIndice!!] = PlantaModelo(
@@ -441,9 +449,9 @@ fun HomeScreen(
 
                                 val listaOrdenada = organizarPlantasPorBomba(listaModificada)
 
-                                if (nombreHuertoActivo.isNotEmpty()) {
-                                    db.guardarHuertoCompleto(nombreHuertoActivo, listaOrdenada)
-                                    huertoActual = db.obtenerMacetasPorHuerto(nombreHuertoActivo)
+                                if (nombreHuertoActivoLocal.isNotEmpty()) {
+                                    db.guardarHuertoCompleto(nombreHuertoActivoLocal, listaOrdenada)
+                                    huertoActual = db.obtenerMacetasPorHuerto(nombreHuertoActivoLocal)
                                 }
 
                                 mostrarDialogoPlantas = false
@@ -509,7 +517,6 @@ fun AccionCard(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageV
     }
 }
 
-// CORREGIDO: Ahora recibe el total de macetas dinámicamente para pintar el centro exacto
 @Composable
 fun MacetitaCard(planta: PlantaModelo, indice: Int, totalMacetas: Int, onClick: () -> Unit) {
     val esCentro = (totalMacetas == 4 && (indice == 1 || indice == 2)) ||

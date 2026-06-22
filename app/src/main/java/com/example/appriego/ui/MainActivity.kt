@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
                         )
                         "home" -> HomeScreen(
                             onVincularClick = { pantalla = "bluetooth" },
+                            onBitacoraClick = { pantalla = "bitacora" },
                             onLogout = {
                                 val prefs = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE)
                                 prefs.edit().putBoolean("sesionActiva", false).apply()
