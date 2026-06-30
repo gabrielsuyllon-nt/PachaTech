@@ -44,17 +44,15 @@ fun BluetoothMainScreen(
     val devices by viewModel.devicesList.collectAsState()
     val connectedDevice by viewModel.connectedDevice.collectAsState()
 
-
-    val plantasDelHuerto by viewModel.plantasDelHuertoActual.collectAsState()
+    // --- AQUÍ ESCUCHAMOS AL ARDUINO DE VERDAD ---
+    val sensorData by viewModel.sensorData.collectAsState()
 
     var buscandoDispositivos by remember { mutableStateOf(false) }
-
 
     val launcherPermisos = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permisos ->
         val conexionOk = permisos[Manifest.permission.BLUETOOTH_CONNECT] ?: false
-
         if (conexionOk) {
             viewModel.cargarDispositivosVinculados()
         } else {
@@ -62,11 +60,9 @@ fun BluetoothMainScreen(
         }
     }
 
-
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val tieneConnect = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-
             if (!tieneConnect) {
                 launcherPermisos.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT))
             } else {
@@ -118,7 +114,6 @@ fun BluetoothMainScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-
 
             Button(
                 onClick = {
@@ -172,11 +167,10 @@ fun BluetoothMainScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .weight(1f) // Esto hace que la lista ocupe el espacio disponible
             ) {
                 if (devices.isEmpty()) {
                     Box(
@@ -302,11 +296,9 @@ fun BluetoothMainScreen(
                 }
             }
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            var humedadCalculada by remember { mutableStateOf<Int?>(null) }
-
+            // --- NUEVA TARJETA: LECTURAS REALES Y CONTROL TOTAL ---
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
@@ -315,73 +307,82 @@ fun BluetoothMainScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Planificación del Huerto Actual",
+                        text = "Monitoreo y Control en Vivo",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         color = Color(0xFF2E7D32)
                     )
-                    Text(
-                        text = "Plantas en la caja: ${plantasDelHuerto.joinToString(", ")}",
-                        fontSize = 13.sp,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Button(
-                            onClick = {
-                                humedadCalculada = viewModel.calcularHumedadNecesaria(plantasDelHuerto)
-                                Toast.makeText(context, "Humedad ideal calculada: $humedadCalculada%", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).height(48.dp)
-                        ) {
-                            Text("Calcular Humedad", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Column {
+                            Text("Humedad Tierra: ${sensorData.humedadSuelo}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("Temp Ambiente: ${sensorData.temperatura} °C", fontSize = 14.sp)
+                            Text("Humedad Aire: ${sensorData.humedadAire}%", fontSize = 14.sp)
                         }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(Color.White, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Estado Bomba", fontSize = 12.sp, color = Color.Gray)
                             Text(
-                                text = if (humedadCalculada != null) "$humedadCalculada%" else "--",
-                                fontWeight = FontWeight.ExtraBold,
+                                text = if (sensorData.estadoBomba == 1) "ACTIVA 💧" else "APAGADA 🛑",
                                 fontSize = 14.sp,
-                                color = Color.Black
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (sensorData.estadoBomba == 1) Color(0xFF1976D2) else Color(0xFFD32F2F)
                             )
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider(color = Color.LightGray)
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Button(
-                        onClick = {
-                            if (connectedDevice == null) {
-                                Toast.makeText(context, "Aún no hay ningún dispositivo conectado", Toast.LENGTH_LONG).show()
-                            } else if (humedadCalculada == null) {
-                                Toast.makeText(context, "Primero debes presionar 'Calcular Humedad'", Toast.LENGTH_SHORT).show()
-                            } else {
-                                humedadCalculada?.let { porcentaje ->
-                                    viewModel.enviarUmbralArduinio(porcentaje)
-                                    Toast.makeText(context, "¡$porcentaje% enviado a la bomba física!", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        },
-                        enabled = true,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(12.dp)
+                    Text("Acciones Manuales (Relé):", fontSize = 13.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Enviar la Info. por Bluetooth", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Button(
+                            onClick = {
+                                viewModel.encenderBomba()
+                                Toast.makeText(context, "Orden enviada: ENCENDER BOMBA", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Prender", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.apagarBomba()
+                                Toast.makeText(context, "Orden enviada: APAGAR BOMBA", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Apagar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.modoAutomatico()
+                                Toast.makeText(context, "Orden enviada: MODO AUTOMÁTICO", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF57C00)),
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Auto", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

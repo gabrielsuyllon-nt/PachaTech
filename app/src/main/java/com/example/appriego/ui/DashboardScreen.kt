@@ -11,13 +11,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel // Importante para enlazar el cerebro
 
 @Composable
-fun DashboardScreen(onAbrirBitacora: () -> Unit, onEditarHuerto: () -> Unit) {
-    val humedadSuelo = "65%"
-    val temperatura = "24 C"
-    val estadoBomba = "Apagada"
-    val nivelTanque = "80%"
+fun DashboardScreen(
+    onAbrirBitacora: () -> Unit,
+    onEditarHuerto: () -> Unit,
+    viewModel: BluetoothViewModel = viewModel() // <-- INYECTAMOS EL MOTOR AQUÍ
+) {
+    // 1. ABRIMOS LAS TUBERÍAS PARA ESCUCHAR AL ARDUINO
+    val sensorData by viewModel.sensorData.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
+
+    // 2. REEMPLAZAMOS LOS TEXTOS FALSOS POR LOS DATOS REALES
+    val humedadSuelo = "${sensorData.humedadSuelo}%"
+    val temperatura = "${sensorData.temperatura} °C"
+    val humedadAire = "${sensorData.humedadAire}%" // Cambiamos Tanque por Aire
+    val estadoBomba = if (sensorData.estadoBomba == 1) "ENCENDIDA 💧" else "APAGADA 🛑"
 
     Column(
         modifier = Modifier
@@ -34,9 +44,14 @@ fun DashboardScreen(onAbrirBitacora: () -> Unit, onEditarHuerto: () -> Unit) {
         ) {
             Column {
                 Text("Panel de Control", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
-                Text("Estado en tiempo real", fontSize = 14.sp, color = Color.Gray)
+
+                // Indicador visual de si el Bluetooth está conectado o no
+                Text(
+                    text = if (connectionState) "🟢 Conectado en tiempo real" else "🔴 Desconectado",
+                    fontSize = 14.sp,
+                    color = if (connectionState) Color(0xFF2E7D32) else Color.Red
+                )
             }
-            // AQUI ESTA EL NUEVO BOTON DE EDITAR HUERTO
             Button(
                 onClick = onEditarHuerto,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
@@ -76,8 +91,8 @@ fun DashboardScreen(onAbrirBitacora: () -> Unit, onEditarHuerto: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             TarjetaSensor(
-                titulo = "Nivel de Tanque",
-                valor = nivelTanque,
+                titulo = "Humedad Aire",
+                valor = humedadAire,
                 colorFondo = Color(0xFFE3F2FD),
                 colorTexto = Color(0xFF1565C0),
                 modifier = Modifier.weight(1f)
@@ -85,10 +100,43 @@ fun DashboardScreen(onAbrirBitacora: () -> Unit, onEditarHuerto: () -> Unit) {
             TarjetaSensor(
                 titulo = "Bomba de Agua",
                 valor = estadoBomba,
-                colorFondo = Color(0xFFECEFF1),
-                colorTexto = Color(0xFF455A64),
+                colorFondo = if (sensorData.estadoBomba == 1) Color(0xFFE1F5FE) else Color(0xFFECEFF1),
+                colorTexto = if (sensorData.estadoBomba == 1) Color(0xFF0277BD) else Color(0xFF455A64),
                 modifier = Modifier.weight(1f)
             )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- LOS BOTONES DE CONTROL MANUAL (EL DISPARO) ---
+        Text("Control Manual de Bomba:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { viewModel.encenderBomba() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                modifier = Modifier.weight(1f).height(45.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Prender", fontSize = 13.sp)
+            }
+            Button(
+                onClick = { viewModel.apagarBomba() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                modifier = Modifier.weight(1f).height(45.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Apagar", fontSize = 13.sp)
+            }
+            Button(
+                onClick = { viewModel.modoAutomatico() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF57C00)),
+                modifier = Modifier.weight(1f).height(45.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Auto", fontSize = 13.sp)
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -124,7 +172,8 @@ fun TarjetaSensor(titulo: String, valor: String, colorFondo: Color, colorTexto: 
         ) {
             Text(text = titulo, fontSize = 14.sp, color = Color.DarkGray, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = valor, fontSize = 28.sp, color = colorTexto, fontWeight = FontWeight.Bold)
+            // Ajusté el tamaño de la letra a 22.sp para que la palabra "ENCENDIDA" no se corte
+            Text(text = valor, fontSize = 22.sp, color = colorTexto, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -3,25 +3,30 @@ package com.example.appriego.ui
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothSocket
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.appriego.data.BluetoothService
+import com.example.appriego.data.SensorData
 import com.example.appriego.model.BluetoothDeviceModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.IOException
-import java.util.UUID
 
 @SuppressLint("MissingPermission")
 class BluetoothViewModel : ViewModel() {
 
+    // --- 1. MOTOR BLUETOOTH (EL QUE CREAMOS HOY) ---
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    private val bluetoothService = BluetoothService(bluetoothAdapter)
 
+    // Datos en tiempo real que vienen del Arduino
+    val sensorData: StateFlow<SensorData> = bluetoothService.sensorData
+    val connectionState: StateFlow<Boolean> = bluetoothService.connectionState
+
+    // --- 2. LÓGICA DE LAS PLANTAS (EL TRABAJO DE TUS AMIGOS) ---
     private val _plantasDelHuertoActual = MutableStateFlow<List<String>>(
-        listOf("Tomate (Mucha Agua)", "Lechuga (Agua Media)", "Espinaca (Agua Media)") // Tus fijas por defecto
+        listOf("Tomate (Mucha Agua)", "Lechuga (Agua Media)", "Espinaca (Agua Media)")
     )
     val plantasDelHuertoActual: StateFlow<List<String>> = _plantasDelHuertoActual.asStateFlow()
 
@@ -29,20 +34,17 @@ class BluetoothViewModel : ViewModel() {
         _plantasDelHuertoActual.value = nuevasPlantas
     }
 
+    // --- 3. GESTIÓN DE DISPOSITIVOS VISUALES (EL TRABAJO DE TUS AMIGOS) ---
     private val _devicesList = MutableStateFlow<List<BluetoothDeviceModel>>(emptyList())
     val devicesList: StateFlow<List<BluetoothDeviceModel>> = _devicesList.asStateFlow()
 
     private val _connectedDevice = MutableStateFlow<BluetoothDeviceModel?>(null)
     val connectedDevice: StateFlow<BluetoothDeviceModel?> = _connectedDevice.asStateFlow()
 
-    private var bluetoothSocket: BluetoothSocket? = null
-    private val SERIAL_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
     init {
         cargarDispositivosVinculados()
     }
 
-    // Carga los dispositivos ya guardados en el teléfono
     fun cargarDispositivosVinculados() {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) return
 
@@ -58,18 +60,14 @@ class BluetoothViewModel : ViewModel() {
         _devicesList.value = listaVinculados
     }
 
-    // ESCANEO COMPLETO PARA LA FERIA: Jala vinculados de forma real
     fun simularEscaneoReal() {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) return
-
         if (bluetoothAdapter.isDiscovering) {
             bluetoothAdapter.cancelDiscovery()
         }
-
         bluetoothAdapter.startDiscovery()
         cargarDispositivosVinculados()
     }
-
     fun vincularDispositivoReal(deviceModel: BluetoothDeviceModel) {
         if (bluetoothAdapter == null) return
         try {
@@ -103,41 +101,45 @@ class BluetoothViewModel : ViewModel() {
         }
     }
 
+    // --- 4. CONEXIÓN REAL AL ARDUINO (NUESTRA MEZCLA) ---
     fun conectarDispositivo(deviceModel: BluetoothDeviceModel) {
-        if (bluetoothAdapter == null) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val remoteDevice = bluetoothAdapter.getRemoteDevice(deviceModel.address)
-                desconectarDispositivo()
+        viewModelScope.launch {
+            // Usamos nuestro motor nuevo para conectar a la MAC address
+            val isConnected = bluetoothService.connectToDevice(deviceModel.address)
 
-                bluetoothSocket = remoteDevice.createRfcommSocketToServiceRecord(SERIAL_UUID)
-                bluetoothAdapter.cancelDiscovery()
-                bluetoothSocket?.connect()
-
-                launch(Dispatchers.Main) {
-                    _connectedDevice.value = deviceModel.copy(isConnected = true)
-                    _devicesList.value = _devicesList.value.map {
-                        if (it.address == deviceModel.address) it.copy(isConnected = true) else it
-                    }
+            if (isConnected) {
+                // Si conecta, actualizamos la UI de tus amigos
+                _connectedDevice.value = deviceModel.copy(isConnected = true)
+                _devicesList.value = _devicesList.value.map {
+                    if (it.address == deviceModel.address) it.copy(isConnected = true) else it
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                try { bluetoothSocket?.close() } catch (ex: Exception) {}
+
+                // Y ponemos al motor a escuchar datos infinitamente
+                bluetoothService.listenForData()
             }
         }
     }
 
     fun desconectarDispositivo() {
-        try {
-            bluetoothSocket?.close()
-            bluetoothSocket = null
-            _connectedDevice.value = null
-            _devicesList.value = _devicesList.value.map { it.copy(isConnected = false) }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        bluetoothService.disconnect()
+        _connectedDevice.value = null
+        _devicesList.value = _devicesList.value.map { it.copy(isConnected = false) }
     }
 
+    // --- 5. ACCIONES DE LA BOMBA (EL QUE CREAMOS HOY) ---
+    fun encenderBomba() {
+        bluetoothService.sendCommand("1")
+    }
+
+    fun apagarBomba() {
+        bluetoothService.sendCommand("0")
+    }
+
+    fun modoAutomatico() {
+        bluetoothService.sendCommand("2")
+    }
+
+    // --- 6. CÁLCULO DE HUMEDAD Y ENVÍO AL ARDUINO (DE TUS AMIGOS) ---
     fun calcularHumedadNecesaria(plantasSeleccionadas: List<String>): Int {
         if (plantasSeleccionadas.isEmpty()) return 0
 
@@ -158,24 +160,13 @@ class BluetoothViewModel : ViewModel() {
                 plantasValidas++
             }
         }
-
         return if (plantasValidas > 0) sumaHumedades / plantasValidas else 50
     }
 
-    // 🌟 NUEVA FUNCIÓN AGREGADA: Transmite el número por el canal Bluetooth real
-    // Se llama 'enviarUmbralArduinio' con la 'i' para que encaje directo con tu UI
     fun enviarUmbralArduinio(porcentaje: Int) {
-        if (bluetoothSocket == null || !bluetoothSocket!!.isConnected) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val outputStream = bluetoothSocket!!.outputStream
-                val trama = "$porcentaje\n" // Añade el salto de línea obligatorio para el Arduino
-                outputStream.write(trama.toByteArray())
-                outputStream.flush()
-                println("LOG_FERIA: Umbral unificado transmitido -> $trama")
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        // En vez de usar el viejo código de tus amigos que rompía la app,
+        // usamos nuestro motor nuevo pero le mandamos el porcentaje exacto
+        bluetoothService.sendCommand("$porcentaje\n")
+        println("LOG_FERIA: Umbral unificado transmitido -> $porcentaje")
     }
 }
