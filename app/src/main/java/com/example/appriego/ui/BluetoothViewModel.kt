@@ -113,6 +113,9 @@ class BluetoothViewModel : ViewModel() {
                 _devicesList.value = _devicesList.value.map {
                     if (it.address == deviceModel.address) it.copy(isConnected = true) else it
                 }
+                val plantas = plantasDelHuertoActual.value
+                val umbral = if (plantas.isNotEmpty()) calcularHumedadNecesaria(plantas) else 50
+                enviarUmbralArduinio(umbral)
 
                 // Y ponemos al motor a escuchar datos infinitamente
                 bluetoothService.listenForData()
@@ -164,9 +167,7 @@ class BluetoothViewModel : ViewModel() {
     }
 
     fun enviarUmbralArduinio(porcentaje: Int) {
-        // En vez de usar el viejo código de tus amigos que rompía la app,
-        // usamos nuestro motor nuevo pero le mandamos el porcentaje exacto
-        bluetoothService.sendCommand("$porcentaje\n")
-        println("LOG_FERIA: Umbral unificado transmitido -> $porcentaje")
+        bluetoothService.sendCommand("U$porcentaje\n")
+        println("LOG_FERIA: Umbral unificado transmitido -> $porcentaje%")
     }
 }

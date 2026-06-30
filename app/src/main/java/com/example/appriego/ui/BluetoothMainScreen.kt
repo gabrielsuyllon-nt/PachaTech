@@ -298,7 +298,7 @@ fun BluetoothMainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- NUEVA TARJETA: LECTURAS REALES Y CONTROL TOTAL ---
+            // --- TARJETA: LECTURAS REALES Y CONTROL TOTAL (CORREGIDA) ---
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
@@ -319,9 +319,12 @@ fun BluetoothMainScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Humedad Tierra: ${sensorData.humedadSuelo}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text("Temp Ambiente: ${sensorData.temperatura} °C", fontSize = 14.sp)
-                            Text("Humedad Aire: ${sensorData.humedadAire}%", fontSize = 14.sp)
+                            Text("Humedad Tierra: ${sensorData.humedadSuelo}%",
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text("Temp Ambiente: ${sensorData.temperatura} °C",
+                                fontSize = 14.sp, color = Color.Black)
+                            Text("Humedad Aire: ${sensorData.humedadAire}%",
+                                fontSize = 14.sp, color = Color.Black)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Estado Bomba", fontSize = 12.sp, color = Color.Gray)
