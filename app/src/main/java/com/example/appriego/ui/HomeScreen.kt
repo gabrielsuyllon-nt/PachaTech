@@ -1,104 +1,582 @@
-// ui/HomeScreen.kt
 package com.example.appriego.ui
 
+import android.content.Context
+import androidx.compose.ui.res.painterResource
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel // <-- LIBRERÍA RESTAURADA
+import com.example.appriego.data.AppDatabase
+import com.example.appriego.model.PlantaModelo
 
+data class TipoPlanta(val nombre: String, val nivelAguaIdeal: Int)
+
+val CATALOGO_PLANTAS = listOf(
+    TipoPlanta("Tomate (Mucha Agua)", 80),
+    TipoPlanta("Lechuga (Agua Media)", 50),
+    TipoPlanta("Espinaca (Agua Media)", 45),
+    TipoPlanta("Cactus (Poca Agua)", 15),
+    TipoPlanta("Romero (Poca Agua)", 20)
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onVincularClick: () -> Unit) {
+fun HomeScreen(
+    bluetoothViewModel: BluetoothViewModel = viewModel(), // <-- VIEWMODEL RESTAURADO Y ACTIVO
+    onVincularClick: () -> Unit,
+    onBitacoraClick: () -> Unit,
+    onLogout: () -> Unit,
+    onAddAccount: () -> Unit
+) {
     val context = LocalContext.current
-    val nombre = obtenerNombre(context) ?: "Agricultor"
+    val db = remember { AppDatabase(context) }
 
-    // Fondo blanco limpio, sin Scaffold
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-            .padding(24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(24.dp))
+    val prefs = context.getSharedPreferences("PachaTechPrefs", Context.MODE_PRIVATE)
+    val nombreUsuario = remember {
+        mutableStateOf(prefs.getString("usuarioNombre", "Agricultor") ?: "Agricultor")
+    }
 
-        // Header
-        Text(
-            text = "PachaTech",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = GreenDark
+    val nombreGuardado = prefs.getString("nombreHuertoActual", "") ?: ""
+    var huertoActual by remember {
+        mutableStateOf(
+            if (nombreGuardado.isNotEmpty()) {
+                db.obtenerMacetasPorHuerto(nombreGuardado)
+            } else {
+                listOf()
+            }
         )
-        Text(
-            text = "Sistema Inteligente de Riego",
-            fontSize = 13.sp,
-            color = Color.Gray
-        )
+    }
+    var nombreHuertoActivo by remember { mutableStateOf(if (nombreGuardado.isNotEmpty()) nombreGuardado else "Sin configurar") }
+    var mostrarDialogoNuevo by remember { mutableStateOf(false) }
+    var cantidadSeleccionada by remember { mutableStateOf(1) }
+    var mostrarDialogoLista by remember { mutableStateOf(false) }
+    var macetaSeleccionadaIndice by remember { mutableStateOf<Int?>(null) }
+    var mostrarDialogoPlantas by remember { mutableStateOf(false) }
+    var mostrarConfirmarBorrar by remember { mutableStateOf(false) }
+    var huertoABorrar by remember { mutableStateOf("") }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Tarjeta bienvenida
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "¡Hola, $nombre! 👋",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE8F5E9),
+                            Color(0xFFFFFFFF)
+                        )
+                    )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Para comenzar a monitorear tus plantas, primero debes sincronizar tu aplicación con el módulo físico de tu huerto.",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    lineHeight = 20.sp
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(24.dp)
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Bienvenido,", fontSize = 16.sp, color = Color.Gray)
+                    Text(nombreUsuario.value, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                }
+
+                var menuExpandido by remember { mutableStateOf(false) }
+
+                Box {
+                    Surface(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clickable { menuExpandido = true },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.example.appriego.R.drawable.ic_user),
+                            contentDescription = "Opciones de usuario",
+                            modifier = Modifier.padding(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = menuExpandido,
+                        onDismissRequest = { menuExpandido = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Añadir otra cuenta") },
+                            onClick = {
+                                menuExpandido = false
+                                onAddAccount()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Cerrar sesión") },
+                            onClick = {
+                                menuExpandido = false
+                                onLogout()
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                AccionCard(
+                    titulo = "Nuevo Huerto",
+                    icono = Icons.Default.Add,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                    onClick = { mostrarDialogoNuevo = true }
+                )
+                AccionCard(
+                    titulo = "Mis Huertos",
+                    icono = Icons.Default.List,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f),
+                    onClick = { mostrarDialogoLista = true }
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-        // Ilustración
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "📱", fontSize = 52.sp)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "⇄", fontSize = 28.sp, color = Color.LightGray)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "🪵", fontSize = 52.sp)
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Botón
-        Button(
-            onClick = onVincularClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(containerColor = GreenButton)
-        ) {
             Text(
-                text = "Vincular Huerto",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                text = "Huerto: $nombreHuertoActivo",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
             )
-        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            if (huertoActual.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Text("Aún no tienes un huerto configurado.\nPresiona 'Nuevo Huerto' para iniciar.", color = Color.Gray, modifier = Modifier.padding(32.dp))
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    itemsIndexed(huertoActual) { indice, planta ->
+                        MacetitaCard(
+                            planta = planta,
+                            indice = indice,
+                            totalMacetas = huertoActual.size,
+                            onClick = {
+                                macetaSeleccionadaIndice = indice
+                                mostrarDialogoPlantas = true
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onBitacoraClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32))
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.List, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Abrir Bitacora del Huerto", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    // --- LÓGICA DE BLUETOOTH REACTIVADA ---
+                    val plantasNombres = huertoActual.map { it.nombre }.filter { it != "Vacío" }
+                    if (plantasNombres.isNotEmpty()) {
+                        bluetoothViewModel.actualizarPlantasDelHuerto(plantasNombres)
+                    } else {
+                        bluetoothViewModel.actualizarPlantasDelHuerto(emptyList())
+                    }
+
+                    onVincularClick()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Bluetooth, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sincronizar Bluetooth", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+        }
     }
+
+    // DIÁLOGO PARA CREAR NUEVO HUERTO
+    if (mostrarDialogoNuevo) {
+        var nombreNuevoHuerto by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoNuevo = false },
+            title = { Text("Configurar Nuevo Huerto", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Asigna un nombre a tu huerto:", fontSize = 14.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = nombreNuevoHuerto,
+                        onValueChange = { nombreNuevoHuerto = it },
+                        label = { Text("Ej. Mi Huerto Tech") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text("¿Cuántas plantas vas a monitorear?:", fontSize = 14.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        listOf(1, 2, 4, 6).forEach { num ->
+                            FilterChip(
+                                selected = cantidadSeleccionada == num,
+                                onClick = { cantidadSeleccionada = num },
+                                label = { Text(num.toString(), fontWeight = FontWeight.Medium) }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (nombreNuevoHuerto.trim().isNotEmpty()) {
+                            val nombreFinalHuerto = nombreNuevoHuerto.trim()
+                            val nuevasPlantas = mutableListOf<PlantaModelo>()
+
+                            for (i in 1..cantidadSeleccionada) {
+                                nuevasPlantas.add(PlantaModelo(i, "Vacío", 0))
+                            }
+
+                            db.guardarHuertoCompleto(nombreFinalHuerto, nuevasPlantas)
+                            prefs.edit().putString("nombreHuertoActual", nombreFinalHuerto).apply()
+
+                            huertoActual = db.obtenerMacetasPorHuerto(nombreFinalHuerto)
+                            nombreHuertoActivo = nombreFinalHuerto
+                            mostrarDialogoNuevo = false
+                        } else {
+                            Toast.makeText(context, "Por favor, escribe un nombre para el huerto", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Crear")
+                }
+            }
+        )
+    }
+
+    // DIÁLOGO PARA BUSCAR Y CAMBIAR ENTRE HUERTOS
+    if (mostrarDialogoLista) {
+        val listaHuertos = db.obtenerListaDeHuertosUnicos()
+
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoLista = false },
+            title = { Text("Selecciona tu Huerto", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (listaHuertos.isEmpty()) {
+                        Text("No tienes huertos registrados aún.", color = Color.Gray)
+                    } else {
+                        Text("Elige un huerto o elimina los que ya no uses:", fontSize = 14.sp, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listaHuertos.forEach { nombreHuerto ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            huertoActual = db.obtenerMacetasPorHuerto(nombreHuerto)
+                                            prefs.edit().putString("nombreHuertoActual", nombreHuerto).apply()
+                                            nombreHuertoActivo = nombreHuerto
+                                            Toast.makeText(context, "Cambiado a: $nombreHuerto", Toast.LENGTH_SHORT).show()
+                                            mostrarDialogoLista = false
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Start,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.Eco, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(nombreHuerto, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            huertoABorrar = nombreHuerto
+                                            mostrarDialogoLista = false
+                                            mostrarConfirmarBorrar = true
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Eliminar Huerto",
+                                            tint = Color(0xFFD32F2F)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoLista = false }) { Text("Cerrar") }
+            }
+        )
+    }
+
+    if (mostrarConfirmarBorrar) {
+        AlertDialog(
+            onDismissRequest = { mostrarConfirmarBorrar = false },
+            title = { Text("¿Eliminar huerto?", fontWeight = FontWeight.Bold) },
+            text = { Text("¿Estás seguro de que deseas eliminar el huerto \"$huertoABorrar\"? Esta acción borrará todas sus macetas y plantas.") },
+            confirmButton = {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                    onClick = {
+                        db.eliminarHuertoPorNombre(huertoABorrar)
+                        Toast.makeText(context, "Huerto eliminado correctamente", Toast.LENGTH_SHORT).show()
+
+                        if (nombreHuertoActivo == huertoABorrar) {
+                            prefs.edit().putString("nombreHuertoActual", "").apply()
+                            nombreHuertoActivo = "Sin configurar"
+                            huertoActual = listOf()
+                        }
+
+                        mostrarConfirmarBorrar = false
+                        mostrarDialogoLista = false
+                    }
+                ) {
+                    Text("Confirmar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        mostrarConfirmarBorrar = false
+                        mostrarDialogoLista = true
+                    }
+                ) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // ASIGNAR PLANTA Y AUTO-ORDENAR POR PRIORIDAD DE BOMBA FÍSICA
+    if (mostrarDialogoPlantas && macetaSeleccionadaIndice != null) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoPlantas = false },
+            title = { Text("Sembrar Planta", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Selecciona una planta. Se ordenarán automáticamente por cercanía a la bomba física del centro.", fontSize = 13.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    CATALOGO_PLANTAS.forEach { tipo ->
+                        TextButton(
+                            onClick = {
+                                val nombreHuertoActivoLocal = prefs.getString("nombreHuertoActual", "") ?: ""
+                                val listaModificada = huertoActual.toMutableList()
+
+                                listaModificada[macetaSeleccionadaIndice!!] = PlantaModelo(
+                                    id = listaModificada[macetaSeleccionadaIndice!!].id,
+                                    nombre = tipo.nombre,
+                                    nivelAgua = tipo.nivelAguaIdeal
+                                )
+
+                                val listaOrdenada = organizarPlantasPorBomba(listaModificada)
+
+                                if (nombreHuertoActivoLocal.isNotEmpty()) {
+                                    db.guardarHuertoCompleto(nombreHuertoActivoLocal, listaOrdenada)
+                                    huertoActual = db.obtenerMacetasPorHuerto(nombreHuertoActivoLocal)
+                                }
+
+                                mostrarDialogoPlantas = false
+                                Toast.makeText(context, "¡Posiciones optimizadas en base a la bomba!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = tipo.nombre,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        text = when {
+                                            tipo.nivelAguaIdeal >= 75 -> "Mucha agua"
+                                            tipo.nivelAguaIdeal >= 50 -> "Agua moderada"
+                                            else -> "Poca agua"
+                                        },
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+
+                                Text(
+                                    text = "${tipo.nivelAguaIdeal}% H2O",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoPlantas = false }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AccionCard(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icono, contentDescription = null, tint = color)
+            Text(titulo, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+fun MacetitaCard(planta: PlantaModelo, indice: Int, totalMacetas: Int, onClick: () -> Unit) {
+    val esCentro = (totalMacetas == 4 && (indice == 1 || indice == 2)) ||
+            (totalMacetas == 6 && (indice == 2 || indice == 3))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (planta.nombre == "Vacío") Color(0xFFF5F5F5) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+
+            Icon(
+                imageVector = Icons.Default.LocalFlorist,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp).padding(bottom = 8.dp),
+                tint = if (planta.nombre == "Vacío") Color.LightGray else MaterialTheme.colorScheme.primary
+            )
+
+            Text("Macetita ${indice + 1}", fontSize = 12.sp, color = Color.Gray)
+            Text(planta.nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.DarkGray)
+            Text("Humedad req: ${planta.nivelAgua}%", fontSize = 12.sp, color = Color.Gray)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = planta.nivelAgua.toFloat() / 100f,
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.LightGray
+            )
+
+            if (esCentro && planta.nombre != "Vacío") {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("💧 Centro (Bomba)", fontSize = 11.sp, color = Color(0xFF1976D2), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+fun organizarPlantasPorBomba(plantas: List<PlantaModelo>): List<PlantaModelo> {
+    if (plantas.isEmpty()) return plantas
+
+    val ordenadasPorAgua = plantas.sortedByDescending { it.nivelAgua }
+    val macetasOrdenadas = MutableList(plantas.size) { PlantaModelo(0, "Vacío", 0) }
+
+    val mapaPosiciones = when (plantas.size) {
+        4 -> listOf(2, 1, 0, 3)
+        6 -> listOf(3, 2, 4, 1, 5, 0)
+        else -> plantas.indices.toList()
+    }
+
+    for (i in ordenadasPorAgua.indices) {
+        if (i < mapaPosiciones.size) {
+            val posicionFisica = mapaPosiciones[i]
+            macetasOrdenadas[posicionFisica] = ordenadasPorAgua[i]
+        }
+    }
+
+    return macetasOrdenadas
 }
