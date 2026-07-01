@@ -1,16 +1,20 @@
 package com.example.appriego.ui
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.example.appriego.data.AppDatabase
 import com.example.appriego.ui.theme.AppRiegoTheme
-import com.example.appriego.ui.HistorialScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,9 +22,6 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("PachaTechPrefs", MODE_PRIVATE)
         val sesionActiva = prefs.getBoolean("sesionActiva", false)
-
-        // --- CAMBIO CLAVE PARA HARDWARE ---
-        // Si hay sesión activa, primero debe conectarse a la placa, luego ir al Home.
         val pantallaInicial = if (sesionActiva) "bluetooth" else "login"
 
         setContent {
@@ -29,13 +30,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    // --- 🚀 MAGIA DE PERMISOS AL INICIAR LA APP ---
+                    val permisosLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestMultiplePermissions()
+                    ) { _ -> /* Ya el sistema los pidió, no bloqueamos la app si rechaza */ }
+
+                    LaunchedEffect(Unit) {
+                        val permisos = mutableListOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                        // Si el Android es 12 o superior, pide permisos especiales de Bluetooth
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            permisos.add(Manifest.permission.BLUETOOTH_CONNECT)
+                            permisos.add(Manifest.permission.BLUETOOTH_SCAN)
+                        }
+                        permisosLauncher.launch(permisos.toTypedArray())
+                    }
+                    // ----------------------------------------------
+
                     var pantalla by remember { mutableStateOf(pantallaInicial) }
-                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val context = LocalContext.current
                     val db = remember { AppDatabase(context) }
 
                     when (pantalla) {
                         "login" -> LoginScreen(
-                            // Al loguearse con éxito, lo mandamos a conectar el módulo
                             onLoginExitoso = { pantalla = "bluetooth" },
                             onNavegarRegistro = { pantalla = "registro" }
                         )
@@ -63,7 +82,6 @@ class MainActivity : ComponentActivity() {
                             onVolverClick = { pantalla = "bitacora" }
                         )
                         "bluetooth" -> BluetoothMainScreen(
-                            // Una vez emparejado y conectado, recién entramos al dashboard principal
                             onDeviceConnected = { pantalla = "home" }
                         )
                     }

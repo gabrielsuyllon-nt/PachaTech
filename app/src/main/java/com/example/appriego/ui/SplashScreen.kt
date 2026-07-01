@@ -1,8 +1,10 @@
-// ui/SplashScreen.kt
 package com.example.appriego.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,10 +38,12 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // 🌱 Emoji de hoja como ícono temporal
-            Text(
-                text = "🌱",
-                fontSize = 80.sp
+            // AQUÍ ESTÁ EL ÍCONO CORREGIDO
+            Icon(
+                imageVector = Icons.Default.Eco,
+                contentDescription = "Logo PachaTech",
+                tint = Color.White,
+                modifier = Modifier.size(80.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))

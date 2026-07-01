@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -200,9 +201,15 @@ fun HistorialScreen(onVolverClick: () -> Unit) {
             } else if (datosHistorial.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📂", fontSize = 40.sp)
+                        // ÍCONO PROFESIONAL EN LUGAR DE EMOJI
+                        Icon(
+                            imageVector = Icons.Default.List,
+                            contentDescription = "Sin registros",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Esta planta no tiene bitácoras registradas.", color = Color.Gray, fontSize = 14.sp)
+                        Text("Esta planta no tiene bitácoras registradas.", color = Color.DarkGray, fontSize = 14.sp)
                     }
                 }
             } else {

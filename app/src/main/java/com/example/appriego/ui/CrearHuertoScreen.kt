@@ -1,11 +1,15 @@
 package com.example.appriego.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,141 +20,141 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appriego.model.PlantaModelo
+import com.example.appriego.model.TipoPlanta
+import com.example.appriego.model.CATALOGO_PLANTAS
 
 @Composable
 fun CrearHuertoScreen(onGuardarClick: (List<PlantaModelo>) -> Unit) {
-    val catalogo = listOf(
-        PlantaModelo(1, "Tomate", 3),
-        PlantaModelo(2, "Lechuga", 3),
-        PlantaModelo(3, "Menta", 3),
-        PlantaModelo(4, "Zanahoria", 2),
-        PlantaModelo(5, "Papa", 2),
-        PlantaModelo(6, "Romero", 1),
-        PlantaModelo(7, "Cactus", 1)
-    )
-
-    // Variables de estado
     var tamanoHuerto by remember { mutableIntStateOf(6) }
     var plantasSeleccionadas by remember { mutableStateOf(listOf<PlantaModelo>()) }
-
-    // Lógica del algoritmo de acomodo
-    val plantasOrdenadas = plantasSeleccionadas.sortedByDescending { it.nivelAgua }
-    val distribucion = MutableList<PlantaModelo?>(tamanoHuerto) { null }
-
-    // Orden de prioridad dependiendo del tamaño (El centro primero, luego bordes)
-    val ordenPrioridad = when (tamanoHuerto) {
-        1 -> listOf(0)
-        2 -> listOf(0, 1)
-        4 -> listOf(1, 2, 0, 3)
-        6 -> listOf(1, 4, 0, 3, 2, 5)
-        else -> listOf(0)
-    }
-
-    // Acomodamos las plantas en la distribución final
-    plantasOrdenadas.forEachIndexed { index, planta ->
-        if (index < tamanoHuerto) {
-            distribucion[ordenPrioridad[index]] = planta
-        }
-    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Configuración de Huerto",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            text = "Diseña tu Huerto",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF2E7D32)
         )
 
-        // 1. SELECTOR DE TAMAÑO
-        Text("1. Elige el tamaño de tu zona de riego:", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- 1. SELECCIÓN DE TAMAÑO ---
+        Text("1. Elige el número de macetas:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             listOf(1, 2, 4, 6).forEach { size ->
                 Button(
                     onClick = {
                         tamanoHuerto = size
-                        plantasSeleccionadas = emptyList() // Limpiamos si cambia de tamaño
+                        plantasSeleccionadas = emptyList()
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (tamanoHuerto == size) Color(0xFF2E7D32) else Color.LightGray
-                    )
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.size(70.dp)
                 ) {
-                    Text("$size", color = if (tamanoHuerto == size) Color.White else Color.Black)
+                    Text(text = "$size", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // 2. CATÁLOGO DE PLANTAS
+        // --- 2. CATÁLOGO DE PLANTAS ---
         Text(
-            text = "2. Agrega tus plantas (${plantasSeleccionadas.size}/$tamanoHuerto)",
-            fontSize = 14.sp,
+            text = "2. Selecciona tus plantas (${plantasSeleccionadas.size}/$tamanoHuerto):",
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                catalogo.take(3).forEach { planta ->
-                    Button(
-                        onClick = {
-                            if (plantasSeleccionadas.size < tamanoHuerto) {
-                                plantasSeleccionadas = plantasSeleccionadas + planta
-                            }
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(text = planta.nombre, fontSize = 11.sp)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                catalogo.drop(3).forEach { planta ->
-                    Button(
-                        onClick = {
-                            if (plantasSeleccionadas.size < tamanoHuerto) {
-                                plantasSeleccionadas = plantasSeleccionadas + planta
-                            }
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(text = planta.nombre, fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para limpiar si se equivoca
-        Button(
-            onClick = { plantasSeleccionadas = emptyList() },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
-            modifier = Modifier.height(36.dp)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp),
+            contentPadding = PaddingValues(4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Limpiar Tierra", fontSize = 12.sp)
+            items(CATALOGO_PLANTAS) { tipo ->
+                Card(
+                    modifier = Modifier
+                        .clickable {
+                            if (plantasSeleccionadas.size < tamanoHuerto) {
+                                val nuevoId = plantasSeleccionadas.size + 1
+                                val nuevaPlanta = PlantaModelo(nuevoId, tipo.nombre, tipo.nivelAguaIdeal)
+                                plantasSeleccionadas = plantasSeleccionadas + nuevaPlanta
+                            }
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = obtenerEmojiPlanta(tipo.nombre),
+                            fontSize = 28.sp
+                        )
+                        Text(
+                            text = tipo.nombre.substringBefore(" ("),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color.DarkGray,
+                            textAlign = TextAlign.Center
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.WaterDrop,
+                                contentDescription = null,
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "${tipo.nivelAguaIdeal}%",
+                                fontSize = 11.sp,
+                                color = Color(0xFF1976D2)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (plantasSeleccionadas.isNotEmpty()) {
+            TextButton(
+                onClick = { plantasSeleccionadas = emptyList() },
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Limpiar selección")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 3. DIBUJO DINÁMICO DEL HUERTO
+        // --- 3. VISTA PREVIA DEL HUERTO ---
+        Text(
+            text = "3. Vista previa del huerto:",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -158,92 +162,110 @@ fun CrearHuertoScreen(onGuardarClick: (List<PlantaModelo>) -> Unit) {
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                when (tamanoHuerto) {
-                    1 -> {
-                        Row { CasillaTierra(distribucion[0]) }
-                    }
-                    2 -> {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CasillaTierra(distribucion[0])
-                            CasillaTierra(distribucion[1])
-                        }
-                    }
-                    4 -> {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CasillaTierra(distribucion[0])
-                            CasillaTierra(distribucion[1])
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CasillaTierra(distribucion[2])
-                            CasillaTierra(distribucion[3])
-                        }
-                    }
-                    6 -> {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CasillaTierra(distribucion[0])
-                            CasillaTierra(distribucion[1])
-                            CasillaTierra(distribucion[2])
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CasillaTierra(distribucion[3])
-                            CasillaTierra(distribucion[4])
-                            CasillaTierra(distribucion[5])
-                        }
-                    }
-                }
+            when (tamanoHuerto) {
+                1 -> VistaMacetas(listOf(1), plantasSeleccionadas)
+                2 -> VistaMacetas(listOf(1, 2), plantasSeleccionadas)
+                4 -> VistaMacetas(listOf(1, 2, 3, 4), plantasSeleccionadas)
+                6 -> VistaMacetas(listOf(1, 2, 3, 4, 5, 6), plantasSeleccionadas)
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // 4. GUARDAR
         Button(
             onClick = { onGuardarClick(plantasSeleccionadas) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            enabled = plantasSeleccionadas.isNotEmpty(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+            enabled = plantasSeleccionadas.size == tamanoHuerto,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
         ) {
-            Text(text = "Finalizar y Guardar Huerto", fontSize = 16.sp)
+            Text("Guardar Huerto", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-fun CasillaTierra(planta: PlantaModelo?) {
+fun VistaMacetas(ids: List<Int>, plantasSeleccionadas: List<PlantaModelo>) {
+    val filas = when (ids.size) {
+        1 -> listOf(listOf(1))
+        2 -> listOf(listOf(1, 2))
+        4 -> listOf(listOf(1, 2), listOf(3, 4))
+        6 -> listOf(listOf(1, 2, 3), listOf(4, 5, 6))
+        else -> listOf(ids)
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        filas.forEach { fila ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                fila.forEach { id ->
+                    val planta = plantasSeleccionadas.getOrNull(id - 1)
+                    MacetaPreview(id, planta)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MacetaPreview(id: Int, planta: PlantaModelo?) {
     Card(
-        modifier = Modifier
-            .size(90.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF5D4037)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        modifier = Modifier.size(80.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (planta != null) Color(0xFFA5D6A7) else Color(0xFFD7CCC8)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            AnimatedVisibility(
-                visible = planta != null,
-                enter = fadeIn(animationSpec = tween(durationMillis = 800))
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = planta?.nombre ?: "",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            if (planta == null) {
-                Text(text = "Tierra\nLibre", color = Color.LightGray, fontSize = 12.sp, textAlign = TextAlign.Center)
+            Text(
+                text = "Maceta $id",
+                fontSize = 10.sp,
+                color = Color.DarkGray
+            )
+            if (planta != null) {
+                Text(
+                    text = obtenerEmojiPlanta(planta.nombre),
+                    fontSize = 24.sp
+                )
+                Text(
+                    text = planta.nombre.substringBefore(" "),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            } else {
+                Text(
+                    text = "🌱",
+                    fontSize = 20.sp
+                )
+                Text("Vacía", fontSize = 10.sp, color = Color.Gray)
             }
         }
+    }
+}
+
+fun obtenerEmojiPlanta(nombre: String): String {
+    return when {
+        nombre.contains("Tomate") -> "🍅"
+        nombre.contains("Lechuga") -> "🥬"
+        nombre.contains("Espinaca") -> "🌿"
+        nombre.contains("Cactus") -> "🌵"
+        nombre.contains("Romero") -> "🌿"
+        nombre.contains("Pimiento") -> "🫑"
+        nombre.contains("Fresa") -> "🍓"
+        nombre.contains("Albahaca") -> "🌱"
+        nombre.contains("Zanahoria") -> "🥕"
+        nombre.contains("Papa") -> "🥔"
+        else -> "🌱"
     }
 }

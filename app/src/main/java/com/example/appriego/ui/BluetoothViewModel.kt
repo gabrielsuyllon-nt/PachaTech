@@ -44,7 +44,14 @@ class BluetoothViewModel : ViewModel() {
     init {
         cargarDispositivosVinculados()
     }
-
+    fun notificarCambioHuerto() {
+        if (connectionState.value) {
+            val umbral = if (plantasDelHuertoActual.value.isNotEmpty())
+                calcularHumedadNecesaria(plantasDelHuertoActual.value)
+            else 50
+            enviarUmbralArduinio(umbral)
+        }
+    }
     fun cargarDispositivosVinculados() {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) return
 
@@ -151,7 +158,12 @@ class BluetoothViewModel : ViewModel() {
             "Lechuga (Agua Media)" to 50,
             "Espinaca (Agua Media)" to 45,
             "Cactus (Poca Agua)" to 15,
-            "Romero (Poca Agua)" to 20
+            "Romero (Poca Agua)" to 20,
+            "Pimiento (Agua Media)" to 55,
+            "Fresa (Agua Media)" to 50,
+            "Albahaca (Agua Media)" to 40,
+            "Zanahoria (Agua Media)" to 45,
+            "Papa (Agua Media)" to 60
         )
 
         var sumaHumedades = 0
