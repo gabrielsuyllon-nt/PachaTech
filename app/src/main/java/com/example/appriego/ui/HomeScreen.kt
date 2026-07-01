@@ -417,6 +417,23 @@ fun AccionCard(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageV
 @Composable
 fun MacetitaCard(planta: PlantaModelo, indice: Int, totalMacetas: Int, onClick: () -> Unit) {
     val esCentro = (totalMacetas == 4 && (indice == 1 || indice == 2)) || (totalMacetas == 6 && (indice == 2 || indice == 3))
+
+    // --- MAGIA DE ANIMACIÓN CORREGIDA ---
+    var progresoActual by remember { mutableFloatStateOf(0f) }
+
+    // Usamos 'Unit' para que esto pase siempre que se dibuje la tarjeta
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(200) // Le damos 0.2 segundos de espera para que tus ojos lo noten
+        progresoActual = planta.nivelAgua.toFloat() / 100f
+    }
+
+    val progresoAnimado by animateFloatAsState(
+        targetValue = progresoActual,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+        label = "animacion_agua"
+    )
+    // -------------------------------------
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
@@ -429,7 +446,15 @@ fun MacetitaCard(planta: PlantaModelo, indice: Int, totalMacetas: Int, onClick: 
             Text(planta.nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF212121))
             Text("Humedad req: ${planta.nivelAgua}%", fontSize = 12.sp, color = Color.DarkGray)
             Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(progress = planta.nivelAgua.toFloat() / 100f, modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape), color = Color(0xFF1B5E20), trackColor = Color.LightGray)
+
+            // Aquí usamos la variable animada en vez de planta.nivelAgua
+            LinearProgressIndicator(
+                progress = progresoAnimado,
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                color = Color(0xFF1B5E20),
+                trackColor = Color.LightGray
+            )
+
             if (esCentro && planta.nombre != "Vacío") {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("Ubicación: Bomba", fontSize = 11.sp, color = Color(0xFF1976D2), fontWeight = FontWeight.ExtraBold)
@@ -437,7 +462,6 @@ fun MacetitaCard(planta: PlantaModelo, indice: Int, totalMacetas: Int, onClick: 
         }
     }
 }
-
 fun organizarPlantasPorBomba(plantas: List<PlantaModelo>): List<PlantaModelo> {
     if (plantas.isEmpty()) return plantas
     val ordenadasPorAgua = plantas.sortedByDescending { it.nivelAgua }
